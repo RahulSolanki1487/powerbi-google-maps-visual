@@ -254,7 +254,7 @@ export class Visual implements IVisual {
         [this.rowGeoLayer, this.urlGeoLayer, this.trafficLayer, this.transitLayer, this.bicyclingLayer]
             .forEach(l => { if (l) { l.setMap(null); } });
         google.maps.event.clearInstanceListeners(this.map);
-        this.mapEl.innerHTML = "";
+        this.mapEl.replaceChildren();
         this.map = null;
         this.rowGeoLayer = this.urlGeoLayer = null;
         this.heat = null;
@@ -616,7 +616,7 @@ export class Visual implements IVisual {
     private renderLegend(): void {
         const l = this.settings.legend;
         const items = this.data.legend;
-        this.legendEl.innerHTML = "";
+        this.legendEl.replaceChildren();
         if (!l.show.value || !items.length) { this.legendEl.style.display = "none"; return; }
         this.legendEl.style.display = "block";
 
@@ -933,7 +933,7 @@ export class Visual implements IVisual {
     }
 
     private showMessage(title: string, body: string): void {
-        this.messageEl.innerHTML = "";
+        this.messageEl.replaceChildren();
         const t = document.createElement("div");
         t.className = "gmv-message-title";
         t.textContent = title;
