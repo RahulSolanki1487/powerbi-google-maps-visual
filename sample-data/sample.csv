@@ -1,0 +1,17 @@
+Location,Latitude,Longitude,Category,Sales,Margin,RouteId,Seq,Geometry
+Bengaluru Store,12.9716,77.5946,Store,520000,0.18,,,
+Mumbai Store,19.0760,72.8777,Store,830000,0.22,,,
+Delhi Store,28.6139,77.2090,Store,760000,0.15,,,
+Chennai Store,13.0827,80.2707,Store,410000,0.12,,,
+Hyderabad Store,17.3850,78.4867,Store,450000,0.20,,,
+Pune Warehouse,18.5204,73.8567,Warehouse,120000,0.08,,,
+Kolkata Warehouse,22.5726,88.3639,Warehouse,95000,0.05,,,
+Truck 1 - Stop 1,18.5204,73.8567,Route,,,T1,1,
+Truck 1 - Stop 2,19.0760,72.8777,Route,,,T1,2,
+Truck 1 - Stop 3,21.1702,72.8311,Route,,,T1,3,
+Truck 1 - Stop 4,23.0225,72.5714,Route,,,T1,4,
+Truck 2 - Stop 1,17.3850,78.4867,Route,,,T2,1,
+Truck 2 - Stop 2,12.9716,77.5946,Route,,,T2,2,
+Truck 2 - Stop 3,13.0827,80.2707,Route,,,T2,3,
+Bengaluru Delivery Zone,,,Zone,300000,0.16,,,"POLYGON ((77.50 12.90, 77.70 12.90, 77.70 13.05, 77.50 13.05, 77.50 12.90))"
+Mumbai Delivery Zone,,,Zone,450000,0.21,,,"POLYGON ((72.80 18.90, 72.98 18.90, 72.98 19.20, 72.80 19.20, 72.80 18.90))"

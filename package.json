@@ -1,0 +1,20 @@
+{
+  "name": "google-maps-visual",
+  "version": "1.0.0",
+  "description": "Power BI custom visual that renders Google Maps: pins, bubbles, clusters, lines/routes, polygons (GeoJSON / WKT), choropleth, heatmap, geocoding.",
+  "private": true,
+  "scripts": {
+    "pbiviz": "pbiviz",
+    "start": "pbiviz start",
+    "package": "pbiviz package",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "powerbi-visuals-api": "~5.11.0",
+    "powerbi-visuals-utils-formattingmodel": "^6.0.0"
+  },
+  "devDependencies": {
+    "powerbi-visuals-tools": "^5.6.0",
+    "typescript": "^5.4.0"
+  }
+}

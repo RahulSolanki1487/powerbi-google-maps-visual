@@ -1,0 +1,26 @@
+{
+  "visual": {
+    "name": "googleMapsVisual",
+    "displayName": "Google Maps",
+    "guid": "googleMapsVisual8F3A1C2E9B7D4A61",
+    "visualClassName": "Visual",
+    "version": "1.0.0.0",
+    "description": "Google Maps for Power BI: pins, bubbles, clustering, routes/lines, polygons from GeoJSON or WKT, choropleth from a GeoJSON URL, heatmap, address geocoding, traffic/transit/bicycling layers, cross-filtering and tooltips.",
+    "supportUrl": "",
+    "gitHubUrl": ""
+  },
+  "apiVersion": "5.11.0",
+  "author": {
+    "name": "Your Company",
+    "email": "support@example.com"
+  },
+  "assets": {
+    "icon": "assets/icon.png"
+  },
+  "externalJS": null,
+  "style": "style/visual.less",
+  "capabilities": "capabilities.json",
+  "dependencies": null,
+  "stringResources": [],
+  "version": "1.0.0.0"
+}

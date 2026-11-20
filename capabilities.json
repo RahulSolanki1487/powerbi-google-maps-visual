@@ -1,0 +1,165 @@
+{
+  "privileges": [
+    {
+      "name": "WebAccess",
+      "essential": true,
+      "parameters": [
+        "https://maps.googleapis.com",
+        "https://*.googleapis.com",
+        "https://*.gstatic.com",
+        "https://*.google.com",
+        "https://*.ggpht.com",
+        "https://raw.githubusercontent.com"
+      ]
+    }
+  ],
+  "dataRoles": [
+    { "name": "location",   "kind": "Grouping",          "displayName": "Location / Address / Key", "description": "Unique point name, an address to geocode, or the key used to join GeoJSON features" },
+    { "name": "latitude",   "kind": "GroupingOrMeasure", "displayName": "Latitude" },
+    { "name": "longitude",  "kind": "GroupingOrMeasure", "displayName": "Longitude" },
+    { "name": "legend",     "kind": "Grouping",          "displayName": "Legend (category color)" },
+    { "name": "size",       "kind": "Measure",           "displayName": "Size / Weight", "description": "Bubble size and heatmap weight" },
+    { "name": "colorValue", "kind": "Measure",           "displayName": "Color saturation", "description": "Gradient color for points, lines and shapes" },
+    { "name": "pathId",     "kind": "Grouping",          "displayName": "Path / Route ID", "description": "Rows that share an ID are joined into one line" },
+    { "name": "pathOrder",  "kind": "GroupingOrMeasure", "displayName": "Path order", "description": "Sequence of points inside a path" },
+    { "name": "geometry",   "kind": "Grouping",          "displayName": "Geometry (GeoJSON / WKT)", "description": "Polygon, line or point as GeoJSON text or WKT, e.g. SQL geography.STAsText()" },
+    { "name": "tooltips",   "kind": "Measure",           "displayName": "Tooltips" }
+  ],
+  "dataViewMappings": [
+    {
+      "conditions": [
+        {
+          "location": { "max": 1 }, "latitude": { "max": 1 }, "longitude": { "max": 1 },
+          "legend": { "max": 1 }, "size": { "max": 1 }, "colorValue": { "max": 1 },
+          "pathId": { "max": 1 }, "pathOrder": { "max": 1 }, "geometry": { "max": 1 }
+        }
+      ],
+      "table": {
+        "rows": {
+          "select": [
+            { "for": { "in": "location" } },
+            { "for": { "in": "latitude" } },
+            { "for": { "in": "longitude" } },
+            { "for": { "in": "legend" } },
+            { "for": { "in": "size" } },
+            { "for": { "in": "colorValue" } },
+            { "for": { "in": "pathId" } },
+            { "for": { "in": "pathOrder" } },
+            { "for": { "in": "geometry" } },
+            { "for": { "in": "tooltips" } }
+          ],
+          "dataReductionAlgorithm": { "window": { "count": 30000 } }
+        }
+      }
+    }
+  ],
+  "objects": {
+    "mapSettings": {
+      "properties": {
+        "apiKey":            { "type": { "text": true } },
+        "mapId":             { "type": { "text": true } },
+        "mapType": {
+          "type": {
+            "enumeration": [
+              { "value": "roadmap",   "displayName": "Roadmap" },
+              { "value": "satellite", "displayName": "Satellite" },
+              { "value": "hybrid",    "displayName": "Hybrid" },
+              { "value": "terrain",   "displayName": "Terrain" }
+            ]
+          }
+        },
+        "styleJson":         { "type": { "text": true } },
+        "autoFit":           { "type": { "bool": true } },
+        "defaultLat":        { "type": { "numeric": true } },
+        "defaultLng":        { "type": { "numeric": true } },
+        "defaultZoom":       { "type": { "numeric": true } },
+        "zoomControl":       { "type": { "bool": true } },
+        "mapTypeControl":    { "type": { "bool": true } },
+        "streetViewControl": { "type": { "bool": true } },
+        "fullscreenControl": { "type": { "bool": true } },
+        "traffic":           { "type": { "bool": true } },
+        "transit":           { "type": { "bool": true } },
+        "bicycling":         { "type": { "bool": true } }
+      }
+    },
+    "dataColors": {
+      "properties": {
+        "defaultColor": { "type": { "fill": { "solid": { "color": true } } } },
+        "useGradient":  { "type": { "bool": true } },
+        "minColor":     { "type": { "fill": { "solid": { "color": true } } } },
+        "maxColor":     { "type": { "fill": { "solid": { "color": true } } } }
+      }
+    },
+    "markers": {
+      "properties": {
+        "show":          { "type": { "bool": true } },
+        "shape": {
+          "type": {
+            "enumeration": [
+              { "value": "pin",    "displayName": "Pin" },
+              { "value": "circle", "displayName": "Circle / bubble" }
+            ]
+          }
+        },
+        "size":          { "type": { "numeric": true } },
+        "minSize":       { "type": { "numeric": true } },
+        "maxSize":       { "type": { "numeric": true } },
+        "opacity":       { "type": { "numeric": true } },
+        "showLabels":    { "type": { "bool": true } },
+        "cluster":       { "type": { "bool": true } },
+        "clusterRadius": { "type": { "numeric": true } },
+        "maxMarkers":    { "type": { "numeric": true } }
+      }
+    },
+    "lines": {
+      "properties": {
+        "show":           { "type": { "bool": true } },
+        "colorByData":    { "type": { "bool": true } },
+        "color":          { "type": { "fill": { "solid": { "color": true } } } },
+        "width":          { "type": { "numeric": true } },
+        "opacity":        { "type": { "numeric": true } },
+        "geodesic":       { "type": { "bool": true } },
+        "arrows":         { "type": { "bool": true } },
+        "showPathPoints": { "type": { "bool": true } }
+      }
+    },
+    "geography": {
+      "properties": {
+        "show":           { "type": { "bool": true } },
+        "fillOpacity":    { "type": { "numeric": true } },
+        "strokeColor":    { "type": { "fill": { "solid": { "color": true } } } },
+        "strokeWidth":    { "type": { "numeric": true } },
+        "geoJsonUrl":     { "type": { "text": true } },
+        "joinProperty":   { "type": { "text": true } },
+        "unmatchedColor": { "type": { "fill": { "solid": { "color": true } } } }
+      }
+    },
+    "heatmap": {
+      "properties": {
+        "show":      { "type": { "bool": true } },
+        "radius":    { "type": { "numeric": true } },
+        "opacity":   { "type": { "numeric": true } },
+        "intensity": { "type": { "numeric": true } }
+      }
+    },
+    "geocoding": {
+      "properties": {
+        "enable": { "type": { "bool": true } }
+      }
+    },
+    "legend": {
+      "properties": {
+        "show":  { "type": { "bool": true } },
+        "title": { "type": { "text": true } }
+      }
+    }
+  },
+  "tooltips": {
+    "supportedTypes": { "default": true, "canvas": true },
+    "roles": ["tooltips"]
+  },
+  "supportsLandingPage": true,
+  "supportsEmptyDataView": true,
+  "supportsMultiVisualSelection": true,
+  "sorting": { "default": {} }
+}
