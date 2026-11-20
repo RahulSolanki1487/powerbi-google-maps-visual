@@ -43,7 +43,109 @@ pbiviz package                           # -> dist/googleMapsVisual*.pbiviz
 
 If `npm install` reports version conflicts, bump `powerbi-visuals-api` in `package.json` and `apiVersion` in `pbiviz.json` to the version that `pbiviz new test` generates on your machine.
 
-Import the `.pbiviz` file through **Visualizations → … → Import a visual from a file**, or publish it to your tenant through **Admin portal → Organizational visuals** so every report can use it.
+`pbiviz package` produces the file you give to report authors: `dist/googleMapsVisual.<guid>.<version>.pbiviz`. The next section shows how to use it.
+
+## Using the visual in a Power BI report
+
+### Step 1: Get the visual into Power BI
+
+Pick **one** of these three options.
+
+**A. Power BI Desktop (single report, quickest to try)**
+
+1. Open Power BI Desktop and go to **File → Options and settings → Options**.
+2. Under **Current file → Report settings**, tick **Developer mode → Turn on developer mode for this session**, then click **OK**. Desktop needs this to import a visual from a file, and it resets every session.
+3. In the **Visualizations** pane, click **…** (Get more visuals) → **Import a visual from a file**.
+4. Select the `.pbiviz` file. A red map-pin icon appears at the bottom of the Visualizations pane.
+5. Optional: right-click the icon → **Pin to visualization pane** so it's there in future reports.
+
+The visual is saved inside the `.pbix`, so anyone you share the report with sees it too.
+
+**B. Power BI Service (browser)**
+
+1. Open a report and click **Edit**.
+2. In **Visualizations**, click **…** → **Import a visual from a file** and select the `.pbiviz`.
+
+This needs the tenant setting **Allow visuals created using the Power BI SDK**, which is *disabled by default*. Ask your Fabric admin to enable it under **Admin portal → Tenant settings → Power BI visuals**.
+
+**C. Organizational visual (recommended for teams and clients)**
+
+A Fabric / Power BI admin does this once:
+
+1. Go to **Settings (gear) → Admin portal → Organizational visuals → Add visual → From a file**.
+2. Upload the `.pbiviz`, give it a name such as "Google Maps", and optionally tick **Enable for all users** so it shows in everyone's Visualizations pane.
+
+Organizational visuals:
+- work even when the tenant blocks uncertified visuals
+- deploy automatically to Power BI Desktop
+- update every report that uses the visual when you upload a new version
+
+They are not supported in Power BI Report Server.
+
+### Step 2: Add the map to a page
+
+1. Click the **Google Maps** icon in Visualizations, then drag the empty visual to size it on the canvas.
+2. Go to **Format visual → Map → Google Maps API key** and paste your key (see *Google setup* below). The map appears.
+3. Drag fields from your data into the field wells. For coordinate columns, open the field's dropdown and choose **Don't summarize**. Otherwise Power BI sums them and the points land in the wrong place.
+
+### Step 3: Map your fields to what you want to show
+
+| You want… | Put these fields in the wells | Then in Format visual |
+|---|---|---|
+| **Pins for stores/assets** | Location (name), Latitude, Longitude, optionally Legend (type) | Markers → Shape = Pin |
+| **Bubbles sized by a value** | Latitude, Longitude, Size (e.g. Sales) | Markers → Shape = Circle; set Min/Max bubble size |
+| **Colored by a value** | Latitude, Longitude, Color saturation (e.g. Margin) | Data colors → Gradient on; pick min/max colors |
+| **Many points (10k+)** | Latitude, Longitude | Markers → Cluster markers = On |
+| **Routes / trips / lines** | Latitude, Longitude, Path / Route ID, Path order (sequence or timestamp) | Lines → arrows, width, geodesic |
+| **Polygons from your database** | Location, Geometry (WKT, e.g. `geo.STAsText()` from SQL, or GeoJSON text) | Geography → fill opacity, border |
+| **Colored states/districts (choropleth)** | Location (must match a property in the GeoJSON, e.g. state name), Color saturation or Legend | Geography → GeoJSON URL, *property to join* (e.g. `name`) |
+| **Heatmap** | Latitude, Longitude, optional Size as weight | Heatmap → Show = On; Markers → Show = Off |
+| **Addresses only, no coordinates** | Location (full address) | Geocoding → On (needs Geocoding API on the key) |
+| **Extra info on hover** | Any measures in Tooltips | — |
+
+You can combine these. For example, one visual can show store pins, delivery routes and zone polygons at the same time, as in `sample-data/sample.csv`.
+
+### Step 4: Interact (works like built-in visuals)
+
+- **Click** a pin, line or shape to cross-filter the other visuals on the page. **Ctrl+click** adds to the selection. **Click empty map** clears it.
+- **Click a cluster** to zoom in. **Ctrl+click a cluster** selects every point in it.
+- **Right-click** opens the Power BI context menu, including **Drill through** if your report has drill-through pages.
+- **Report-page tooltips:** in **Format visual → General → Tooltips**, set Type = *Report page* and choose your tooltip page.
+- Slicers and filters on the page filter the map automatically.
+- Bookmarks save and restore the map's selection.
+
+### Step 5: Publish and share
+
+1. In Desktop, click **Publish** and choose a workspace.
+2. Viewers need nothing extra. If you used option B, the tenant setting must still be enabled for them.
+3. The API key travels inside the report, so share only with people you trust to use your key's quota.
+
+### Updating the visual later
+
+1. Increase `version` in `pbiviz.json` (for example `1.0.1.0`), then run `pbiviz package`.
+2. Install the new file:
+   - **Option A/B:** re-import the new `.pbiviz` into each report. Power BI replaces the old version.
+   - **Option C:** admin portal → Organizational visuals → the visual's **⋯ → Settings → Update**. Every report picks it up.
+
+### Developing against a live report (optional)
+
+`pbiviz start` serves the visual from your machine:
+
+1. In the Power BI Service, go to **Settings → Developer settings → Turn on developer mode**. In Desktop, the equivalent is **File → Options → Report settings → Develop a visual**.
+2. Add the **Developer visual** (`</>` icon) from the Visualizations pane.
+3. It reloads each time you save code.
+
+### Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| "Google rejected the API key" | Enable Maps JavaScript API and billing; remove **HTTP-referrer** restrictions from the key (Power BI's sandbox has no origin). Use API restrictions instead. |
+| Map is grey / script blocked | The visual's WebAccess privilege must include Google's domains (it does by default). Check that your network or proxy allows `maps.googleapis.com`. |
+| Points in the ocean / one point at 0,0 | Latitude and longitude are being summed or swapped. Set both to **Don't summarize** and check which column is which. |
+| Shapes don't appear | WKT must be `lng lat` order (SQL `STAsText()` already is). For a GeoJSON URL, add its host to `WebAccess` in `capabilities.json` and re-package. |
+| Choropleth regions all grey | The Location values don't match the GeoJSON property. Check *property to join* and the spelling (matching ignores case and surrounding spaces). |
+| Changed the API key but nothing happens | Reload the report page; Google Maps can only load once per page. |
+| Import option is greyed out / visual blocked | Turn on developer mode (Desktop), or ask the admin to enable *Allow visuals created using the Power BI SDK*, or use option C. |
 
 ## Google setup
 
