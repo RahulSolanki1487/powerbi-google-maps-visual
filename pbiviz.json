@@ -6,8 +6,8 @@
     "visualClassName": "Visual",
     "version": "1.0.0.0",
     "description": "Google Maps for Power BI: pins, bubbles, clustering, routes/lines, polygons from GeoJSON or WKT, choropleth from a GeoJSON URL, heatmap, address geocoding, traffic/transit/bicycling layers, cross-filtering and tooltips.",
-    "supportUrl": "",
-    "gitHubUrl": ""
+    "supportUrl": "https://github.com/RahulSolanki1487/powerbi-google-maps-visual/issues",
+    "gitHubUrl": "https://github.com/RahulSolanki1487/powerbi-google-maps-visual"
   },
   "apiVersion": "5.11.0",
   "author": {
