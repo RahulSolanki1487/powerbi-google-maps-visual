@@ -2,6 +2,7 @@
   "name": "google-maps-visual",
   "version": "1.0.0",
   "description": "Power BI custom visual that renders Google Maps: pins, bubbles, clusters, lines/routes, polygons (GeoJSON / WKT), choropleth, heatmap, geocoding.",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "private": true,
   "scripts": {
     "pbiviz": "pbiviz",

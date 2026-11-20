@@ -2,6 +2,8 @@
 
 A Power BI custom visual (`pbiviz`, API 5.x, TypeScript) that puts a Google Map in any report. You can import it into any report and drive it from data fields.
 
+> **License:** [PolyForm Noncommercial 1.0.0](LICENSE.md). It's free for personal, educational, research and non-profit use. **Commercial use requires a paid license.** See [License](#license).
+
 ## Features
 
 | Area | What it does |
@@ -193,3 +195,29 @@ Load `sample-data/sample.csv`, then map:
 - RouteId → Path ID
 - Seq → Path order
 - Geometry → Geometry
+
+## License
+
+Copyright (c) 2026 Rahul Solanki.
+
+This project is licensed under the **[PolyForm Noncommercial License 1.0.0](LICENSE.md)**.
+
+**Free, no permission needed:**
+- personal projects, study, research and experimentation
+- charities, educational institutions, public research organizations, public health/safety and government bodies
+
+**Needs a commercial license:**
+- use by or for a company in its business, such as internal company reports or dashboards
+- reselling or bundling the visual
+- building it into products or client deliverables
+- offering it as part of paid services
+
+Every copy you share must include the `LICENSE.md` file (or its URL) and the `Required Notice:` line at the top of it.
+
+**Commercial licensing:** contact Rahul Solanki through [github.com/RahulSolanki1487](https://github.com/RahulSolanki1487) or open an issue in this repository.
+
+### Third-party terms
+
+This license covers only the code in this repository.
+- **Google Maps Platform:** using the visual also requires your own Google Maps Platform API key and acceptance of the [Google Maps Platform Terms of Service](https://cloud.google.com/maps-platform/terms). Charges for map loads and geocoding requests are billed by Google to the key owner.
+- **Microsoft:** the Power BI packages this project depends on (`powerbi-visuals-api`, `powerbi-visuals-tools`, `powerbi-visuals-utils-formattingmodel`) are distributed by Microsoft under their own licenses.
