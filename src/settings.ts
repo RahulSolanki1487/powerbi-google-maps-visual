@@ -14,15 +14,20 @@ const markerShapeItems = [
     { value: "circle", displayName: "Circle / bubble" }
 ];
 
+/** Creates a text input setting with a name, label, default value and placeholder. */
 const text = (name: string, displayName: string, value = "", placeholder = "") =>
     new formattingSettings.TextInput({ name, displayName, value, placeholder });
+/** Creates an on or off switch setting with a name, label and default. */
 const toggle = (name: string, displayName: string, value: boolean) =>
     new formattingSettings.ToggleSwitch({ name, displayName, value });
+/** Creates a number input setting with a name, label and default value. */
 const num = (name: string, displayName: string, value: number) =>
     new formattingSettings.NumUpDown({ name, displayName, value });
+/** Creates a color picker setting with a name, label and default color. */
 const color = (name: string, displayName: string, value: string) =>
     new formattingSettings.ColorPicker({ name, displayName, value: { value } });
 
+/** Settings card for the map itself: API key, map ID, map type, style, default position and zoom, controls and extra layers. */
 export class MapSettingsCard extends formattingSettings.SimpleCard {
     apiKey = text("apiKey", "Google Maps API key", "", "AIza...");
     mapId = text("mapId", "Map ID (Advanced Markers / cloud styling)", "", "DEMO_MAP_ID");
@@ -50,6 +55,7 @@ export class MapSettingsCard extends formattingSettings.SimpleCard {
     ];
 }
 
+/** Settings card for data colors: the default color and the gradient between a minimum and maximum color. */
 export class DataColorsCard extends formattingSettings.SimpleCard {
     defaultColor = color("defaultColor", "Default color", "#EA4335");
     useGradient = toggle("useGradient", "Gradient by 'Color saturation'", true);
@@ -61,6 +67,7 @@ export class DataColorsCard extends formattingSettings.SimpleCard {
     slices: formattingSettings.Slice[] = [this.defaultColor, this.useGradient, this.minColor, this.maxColor];
 }
 
+/** Settings card for markers: visibility, shape, sizes, opacity, labels and clustering. */
 export class MarkersCard extends formattingSettings.SimpleCard {
     show = toggle("show", "Show markers", true);
     shape = new formattingSettings.ItemDropdown({ name: "shape", displayName: "Shape", items: markerShapeItems, value: markerShapeItems[0] });
@@ -81,6 +88,7 @@ export class MarkersCard extends formattingSettings.SimpleCard {
     ];
 }
 
+/** Settings card for lines and routes: visibility, color, width, opacity, geodesic paths and direction arrows. */
 export class LinesCard extends formattingSettings.SimpleCard {
     show = toggle("show", "Show lines", true);
     colorByData = toggle("colorByData", "Color by data", true);
@@ -99,6 +107,7 @@ export class LinesCard extends formattingSettings.SimpleCard {
     ];
 }
 
+/** Settings card for shapes and boundaries: fill, border, the boundary file address and how shapes are matched to locations. */
 export class GeographyCard extends formattingSettings.SimpleCard {
     show = toggle("show", "Show shapes", true);
     fillOpacity = num("fillOpacity", "Fill opacity (%)", 55);
@@ -116,6 +125,7 @@ export class GeographyCard extends formattingSettings.SimpleCard {
     ];
 }
 
+/** Settings card for the heatmap: visibility, radius, opacity and intensity. */
 export class HeatmapCard extends formattingSettings.SimpleCard {
     show = toggle("show", "Show heatmap", false);
     radius = num("radius", "Radius (px)", 25);
@@ -127,6 +137,7 @@ export class HeatmapCard extends formattingSettings.SimpleCard {
     slices: formattingSettings.Slice[] = [this.show, this.radius, this.opacity, this.intensity];
 }
 
+/** Settings card with a switch for looking up positions from location text when coordinates are missing. */
 export class GeocodingCard extends formattingSettings.SimpleCard {
     enable = toggle("enable", "Geocode 'Location' when lat/long missing", false);
 
@@ -135,6 +146,7 @@ export class GeocodingCard extends formattingSettings.SimpleCard {
     slices: formattingSettings.Slice[] = [this.enable];
 }
 
+/** Settings card for the legend: whether to show it and its title. */
 export class LegendCard extends formattingSettings.SimpleCard {
     show = toggle("show", "Show legend", true);
     title = text("title", "Title", "");
@@ -144,6 +156,7 @@ export class LegendCard extends formattingSettings.SimpleCard {
     slices: formattingSettings.Slice[] = [this.show, this.title];
 }
 
+/** Collects all the settings cards of the visual into one model. */
 export class VisualSettings extends formattingSettings.Model {
     map = new MapSettingsCard();
     dataColors = new DataColorsCard();
