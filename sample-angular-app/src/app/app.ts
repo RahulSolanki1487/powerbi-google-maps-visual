@@ -4,20 +4,13 @@ import {
   CsvTable, DEFAULT_ROLE_MAP, ROLES, Role, buildDataView, parseCsv
 } from './mock/dataview-builder';
 import { VisualInstance, loadVisualClass } from './visual-loader';
+import { Scenario } from './scenarios/scenario';
+import { SCENARIOS } from './scenarios/scenarios';
 
 const KEY_STORAGE = 'gmv-harness-api-key';
 // Power BI VisualUpdateType flags.
 const UPDATE_DATA = 2;
 const UPDATE_RESIZE = 4;
-
-const DEFAULT_OBJECTS = {
-  mapSettings: { mapType: 'roadmap', autoFit: true },
-  markers: { show: true, shape: 'circle', cluster: false, showLabels: false },
-  lines: { show: true, geodesic: false },
-  heatmap: { show: false },
-  geocoding: { enable: false },
-  legend: { show: true }
-};
 
 @Component({
   selector: 'app-root',
@@ -29,10 +22,12 @@ export class App implements OnDestroy {
   protected readonly apiKey = signal(localStorage.getItem(KEY_STORAGE) ?? '');
   protected readonly table = signal<CsvTable>({ headers: [], rows: [] });
   protected readonly roleMap = signal<Record<string, Role | ''>>({ ...DEFAULT_ROLE_MAP });
-  protected readonly objectsText = signal(JSON.stringify(DEFAULT_OBJECTS, null, 2));
+  protected readonly scenarios = SCENARIOS;
+  protected readonly scenario = signal<Scenario | null>(null);
+  protected readonly objectsText = signal('{}');
   protected readonly error = signal('');
   protected readonly log = signal<HostLogEntry[]>([]);
-  protected readonly dataName = signal('sample-data/sample.csv');
+  protected readonly dataName = signal('');
 
   private readonly container = viewChild.required<ElementRef<HTMLDivElement>>('visualHost');
   private visual: VisualInstance | null = null;
@@ -40,7 +35,7 @@ export class App implements OnDestroy {
 
   constructor() {
     afterNextRender(() => {
-      this.loadSampleCsv().then(() => this.mountVisual());
+      this.mountVisual().then(() => this.selectScenario(this.initialScenario()));
       this.resizeObserver = new ResizeObserver(() => this.render(UPDATE_RESIZE));
       this.resizeObserver.observe(this.container().nativeElement);
     });
@@ -49,6 +44,12 @@ export class App implements OnDestroy {
   ngOnDestroy() {
     this.resizeObserver?.disconnect();
     this.visual?.destroy?.();
+  }
+
+  /** `?scenario=<id>` in the URL opens that example directly. */
+  private initialScenario(): Scenario {
+    const id = new URLSearchParams(location.search).get('scenario');
+    return this.scenarios.find(s => s.id === id) ?? this.scenarios[0];
   }
 
   protected onKey(value: string) {
@@ -66,11 +67,20 @@ export class App implements OnDestroy {
   protected async onFile(event: Event) {
     const file = (event.target as HTMLInputElement).files?.[0];
     if (!file) { return; }
-    this.applyCsv(await file.text(), file.name, false);
+    this.scenario.set(null);
+    this.applyCsv(await file.text(), file.name);
   }
 
-  protected resetSample() {
-    this.loadSampleCsv().then(() => this.render());
+  /** Loads a scenario's data, role mapping and format settings, then redraws the map. */
+  protected async selectScenario(s: Scenario) {
+    this.scenario.set(s);
+    let data = s.table;
+    if (!data && s.csvUrl) { data = parseCsv(await (await fetch(s.csvUrl)).text()); }
+    this.table.set(data ?? { headers: [], rows: [] });
+    this.dataName.set(s.csvUrl ?? s.title);
+    this.roleMap.set({ ...s.roles });
+    this.objectsText.set(JSON.stringify(s.objects, null, 2).replaceAll('{origin}', location.origin));
+    this.render();
   }
 
   protected apply() { this.render(); }
@@ -80,12 +90,7 @@ export class App implements OnDestroy {
 
   protected clearLog() { this.log.set([]); }
 
-  private async loadSampleCsv() {
-    const text = await (await fetch('sample-data/sample.csv')).text();
-    this.applyCsv(text, 'sample-data/sample.csv', true);
-  }
-
-  private applyCsv(text: string, name: string, useDefaultRoles: boolean) {
+  private applyCsv(text: string, name: string) {
     const table = parseCsv(text);
     this.table.set(table);
     this.dataName.set(name);
@@ -95,7 +100,7 @@ export class App implements OnDestroy {
       const lower = h.toLowerCase();
       map[h] = DEFAULT_ROLE_MAP[h] ?? ROLES.find(r => r.toLowerCase() === lower) ?? '';
     });
-    this.roleMap.set(useDefaultRoles ? { ...DEFAULT_ROLE_MAP, ...map } : map);
+    this.roleMap.set(map);
     this.render();
   }
 

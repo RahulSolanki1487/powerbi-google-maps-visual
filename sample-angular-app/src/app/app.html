@@ -13,10 +13,22 @@
 <main>
   <aside>
     <section>
+      <h2>Examples</h2>
+      <div class="menu">
+        @for (s of scenarios; track s.id) {
+          <button [class.active]="scenario()?.id === s.id" (click)="selectScenario(s)">{{ s.title }}</button>
+        }
+      </div>
+      @if (scenario(); as s) {
+        <p class="desc">{{ s.description }}</p>
+        @if (s.needsGeocoding) { <p class="warn">Needs the Geocoding API enabled on your key.</p> }
+      }
+    </section>
+
+    <section>
       <h2>Data <small>{{ dataName() }} · {{ table().rows.length }} rows</small></h2>
       <div class="row">
-        <input type="file" accept=".csv" (change)="onFile($event)" />
-        <button (click)="resetSample()">Sample</button>
+        <label>Custom CSV <input type="file" accept=".csv" (change)="onFile($event)" /></label>
       </div>
       <table>
         <thead><tr><th>CSV column</th><th>Data role</th></tr></thead>

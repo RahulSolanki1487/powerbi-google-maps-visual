@@ -17,3 +17,11 @@ td, th { text-align: left; padding: 2px 4px; border-bottom: 1px solid #eee; }
 .hint { color: #777; font-size: 12px; margin: 4px 0 0; }
 .log { list-style: none; margin: 0; padding: 0; max-height: 160px; overflow: auto; font: 12px Consolas, monospace; }
 .log time { color: #888; }
+
+.menu { display: flex; flex-wrap: wrap; gap: 6px; }
+.menu button { padding: 4px 10px; border: 1px solid #bbb; border-radius: 14px; background: #fff; cursor: pointer; }
+.menu button:hover { background: #f3f2f1; }
+.menu button.active { background: #0b5cad; border-color: #0b5cad; color: #fff; }
+.desc { margin: 8px 0 0; color: #444; }
+.warn { margin: 4px 0 0; color: #8a5a00; }
+aside textarea { height: 220px; }
