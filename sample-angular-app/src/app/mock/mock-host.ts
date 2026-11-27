@@ -53,6 +53,8 @@ class MockSelectionManager {
 /** A small floating tooltip that mimics Power BI's native tooltip. */
 class MockTooltipService {
   private el: HTMLDivElement | null = null;
+  /** `anchor` is the visual's element: Power BI gives tooltip coordinates relative to it. */
+  constructor(private readonly anchor: HTMLElement) {}
   enabled() { return true; }
   show(options: { dataItems: Array<{ displayName: string; value: string }>; coordinates: number[] }) {
     const el = this.ensure();
@@ -73,8 +75,10 @@ class MockTooltipService {
 
   private place(c: number[]) {
     if (!this.el) { return; }
-    this.el.style.left = `${(c?.[0] ?? 0) + 12}px`;
-    this.el.style.top = `${(c?.[1] ?? 0) + 12}px`;
+    // The element is position:fixed (page coordinates), so add the visual's own offset.
+    const origin = this.anchor.getBoundingClientRect();
+    this.el.style.left = `${origin.left + (c?.[0] ?? 0) + 12}px`;
+    this.el.style.top = `${origin.top + (c?.[1] ?? 0) + 12}px`;
   }
   private ensure(): HTMLDivElement {
     if (!this.el) {
@@ -96,7 +100,7 @@ function now() { return new Date().toLocaleTimeString(); }
 
 /** Builds the fake host handed to `new Visual({ element, host })`. */
 /** `fetchMore` mimics host.fetchMoreData(): it returns true when another chunk of rows will be delivered. */
-export function createMockHost(log: HostLogger, fetchMore: () => boolean = () => false) {
+export function createMockHost(element: HTMLElement, log: HostLogger, fetchMore: () => boolean = () => false) {
   const colors = new Map<string, string>();
   return {
     createSelectionManager: () => new MockSelectionManager(log),
@@ -114,7 +118,7 @@ export function createMockHost(log: HostLogger, fetchMore: () => boolean = () =>
         return { value: colors.get(key)! };
       }
     },
-    tooltipService: new MockTooltipService(),
+    tooltipService: new MockTooltipService(element),
     eventService: {
       renderingStarted: () => log({ time: now(), kind: 'render', message: 'renderingStarted' }),
       renderingFinished: () => log({ time: now(), kind: 'render', message: 'renderingFinished' }),

@@ -125,7 +125,7 @@ export class App implements OnDestroy {
       host.appendChild(element);
       this.visual = new Visual({
         element,
-        host: createMockHost(entry => this.log.update(l => [entry, ...l].slice(0, 200)), () => this.fetchMore())
+        host: createMockHost(element, entry => this.log.update(l => [entry, ...l].slice(0, 200)), () => this.fetchMore())
       });
       this.render();
     } catch (e) {
