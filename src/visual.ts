@@ -28,6 +28,8 @@ const UPDATE_RESIZE_END = 16;
 const OPERATION_APPEND = 1;
 // Above this many points the map only draws clusters near the visible area.
 const CULL_THRESHOLD = 2000;
+// Distance in pixels between a classic marker and the middle of its text label.
+const LABEL_GAP_PX = 9;
 
 const PIN_PATH = "M12 0C7.03 0 3 4.03 3 9c0 6.75 9 15 9 15s9-8.25 9-15c0-4.97-4.03-9-9-9z";
 const DIM = 0.22;
@@ -520,16 +522,20 @@ export class Visual implements IVisual {
             icon = { path: google.maps.SymbolPath.CIRCLE, scale: style.size / 2, fillColor: style.color, fillOpacity: 0.9, strokeColor: "#ffffff", strokeWeight: 2 };
             label = { text: compactCount(style.clusterCount), color: "#ffffff", fontSize: "12px", fontWeight: "700" };
         } else if (style.shape === "pin") {
+            const scale = style.size / 24;
             icon = {
-                path: PIN_PATH, anchor: new google.maps.Point(12, 24), scale: style.size / 24,
+                path: PIN_PATH, anchor: new google.maps.Point(12, 24), scale,
                 fillColor: style.color, fillOpacity: 1, strokeColor: "#ffffff", strokeWeight: 1.2,
-                labelOrigin: new google.maps.Point(12, 32)
+                // labelOrigin is in path units and Google multiplies it by scale, so convert the pixel gap below the tip.
+                labelOrigin: new google.maps.Point(12, 24 + LABEL_GAP_PX / scale)
             };
         } else {
+            const scale = style.size / 2;
             icon = {
-                path: google.maps.SymbolPath.CIRCLE, scale: style.size / 2,
+                path: google.maps.SymbolPath.CIRCLE, scale,
                 fillColor: style.color, fillOpacity: 0.85, strokeColor: "#ffffff", strokeWeight: 1.5,
-                labelOrigin: new google.maps.Point(0, 2.6)
+                // The circle path has radius 1 and the offset is scaled, so put the label LABEL_GAP_PX below its edge.
+                labelOrigin: new google.maps.Point(0, 1 + LABEL_GAP_PX / scale)
             };
         }
         if (!isCluster && style.label) {
