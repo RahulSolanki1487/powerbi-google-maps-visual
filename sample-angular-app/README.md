@@ -16,6 +16,8 @@ After the visual rebuilds, click **Reload visual** in the page (or refresh).
 
 ## Using it
 
+Click **How to setup** in the page header (or open `/?setup`) for step-by-step instructions: Google key, building the `.pbiviz`, using it in Power BI Desktop/Service, and embedding the report in your own app. The same steps are in the repo's root README.
+
 1. Paste a Google Maps API key and press **Apply** (it is kept in `localStorage`; nothing is sent anywhere except Google). Use API restrictions rather than HTTP-referrer restrictions, or add `http://localhost:4200/*`.
 2. Pick an example from the **Examples** menu: pins, bubbles, labels, legend colors, gradient, clustering, routes, geodesic lines, WKT polygons, GeoJSON geometry, choropleth, heatmap, geocoding, map type & layers, or everything together. Each one loads its own data, role mapping and format settings and redraws the map. Open one directly with `?scenario=<id>`, for example `http://localhost:4200/?scenario=heatmap`. You can also upload your own CSV and map each column to a data role.
 3. Edit the **Format objects** JSON to try format-pane settings (names match `capabilities.json`).

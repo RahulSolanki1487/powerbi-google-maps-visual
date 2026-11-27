@@ -5,6 +5,7 @@ import {
 } from './mock/dataview-builder';
 import { VisualInstance, loadVisualClass } from './visual-loader';
 import { Scenario } from './scenarios/scenario';
+import { SetupGuide } from './setup-guide/setup-guide';
 import { SCENARIOS } from './scenarios/scenarios';
 
 const KEY_STORAGE = 'gmv-harness-api-key';
@@ -14,6 +15,7 @@ const UPDATE_RESIZE = 4;
 
 @Component({
   selector: 'app-root',
+  imports: [SetupGuide],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })
@@ -26,6 +28,7 @@ export class App implements OnDestroy {
   protected readonly scenario = signal<Scenario | null>(null);
   protected readonly objectsText = signal('{}');
   protected readonly error = signal('');
+  protected readonly showSetup = signal(new URLSearchParams(location.search).has('setup'));
   protected readonly log = signal<HostLogEntry[]>([]);
   protected readonly dataName = signal('');
 

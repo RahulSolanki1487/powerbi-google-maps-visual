@@ -122,6 +122,49 @@ You can combine these. For example, one visual can show store pins, delivery rou
 2. Viewers need nothing extra. If you used option B, the tenant setting must still be enabled for them.
 3. The API key travels inside the report, so share only with people you trust to use your key's quota.
 
+### Using the visual in your own application (embedding)
+
+The visual runs inside a Power BI report, so to put it in a web app you embed that report with Power BI Embedded. The steps below use Angular, but any front end works the same way.
+
+**Prerequisites**
+
+- A published report that contains the visual (Steps 1-5 above), in a workspace on Fabric / Power BI capacity (F, P or A SKU).
+- An Azure AD app registration (service principal) that is a member of that workspace and allowed to use Power BI APIs.
+- The visual saved inside the report. Importing the `.pbiviz` into the `.pbix` in Desktop (option A) is the simplest route. Check Microsoft's embedding documentation before relying on organizational visuals in an embed.
+
+**Steps**
+
+1. Add a backend endpoint (for example `GET /api/powerbi/embed-config`) that gets an Azure AD token for the service principal, reads the report's `embedUrl`, calls **Generate Token** with `accessLevel: View`, and returns `{ reportId, embedUrl, embedToken }`. Keep the service principal secret on the server.
+2. In the front end: `npm install powerbi-client`.
+3. Embed the report:
+
+```ts
+import * as pbi from 'powerbi-client';
+
+const service = new pbi.service.Service(
+  pbi.factories.hpmFactory, pbi.factories.wpmpFactory, pbi.factories.routerFactory);
+
+const { reportId, embedUrl, embedToken } = await (await fetch('/api/powerbi/embed-config')).json();
+
+service.embed(hostElement, {
+  type: 'report',
+  id: reportId,
+  embedUrl,
+  accessToken: embedToken,
+  tokenType: pbi.models.TokenType.Embed,
+  settings: { panes: { filters: { visible: false } } }
+});
+```
+
+4. Serve the app over HTTPS and allow `maps.googleapis.com` through your network or proxy.
+5. The Google key is stored in the report (Step 2), and the HTTP-referrer restriction rule from *Google setup* applies to embedded reports too.
+
+The [`sample-angular-app`](sample-angular-app/) has a **How to setup** page with the same steps and a ready-to-copy Angular component.
+
+### Testing locally without Power BI
+
+[`sample-angular-app/`](sample-angular-app/) runs this visual in a browser with a mock Power BI host and an examples menu for each feature. See its README.
+
 ### Updating the visual later
 
 1. Increase `version` in `pbiviz.json` (for example `1.0.1.0`), then run `pbiviz package`.

@@ -4,13 +4,16 @@
     API key
     <input type="password" placeholder="AIza..." [value]="apiKey()" (change)="onKey($any($event.target).value)" (keyup.enter)="onKey($any($event.target).value); apply()" />
   </label>
+  <button (click)="showSetup.set(!showSetup())">{{ showSetup() ? 'Back to examples' : 'How to setup' }}</button>
   <button (click)="apply()">Apply</button>
   <button (click)="remount()" title="Reload visual.js after rebuilding the visual">Reload visual</button>
 </header>
 
 @if (error()) { <div class="error">{{ error() }}</div> }
 
-<main>
+@if (showSetup()) { <app-setup-guide /> }
+
+<main [hidden]="showSetup()">
   <aside>
     <section>
       <h2>Examples</h2>

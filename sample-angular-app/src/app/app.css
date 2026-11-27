@@ -25,3 +25,4 @@ td, th { text-align: left; padding: 2px 4px; border-bottom: 1px solid #eee; }
 .desc { margin: 8px 0 0; color: #444; }
 .warn { margin: 4px 0 0; color: #8a5a00; }
 aside textarea { height: 220px; }
+main[hidden] { display: none; }
