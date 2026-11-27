@@ -45,7 +45,7 @@ function isNumeric(table: CsvTable, col: number): boolean {
 }
 
 /** Builds the dataView. `roleMap` maps CSV headers to data roles; unmapped columns are left out. */
-export function buildDataView(table: CsvTable, roleMap: Record<string, Role | ''>, objects: unknown) {
+export function buildDataView(table: CsvTable, roleMap: Record<string, Role | ''>, objects: unknown, hasMoreSegments = false) {
   const used = table.headers
     .map((name, index) => ({ name, index, role: roleMap[name] }))
     .filter((c): c is { name: string; index: number; role: Role } => !!c.role);
@@ -67,5 +67,8 @@ export function buildDataView(table: CsvTable, roleMap: Record<string, Role | ''
     return columns[i].type.numeric ? Number(v) : v;
   }));
 
-  return { metadata: { columns, objects }, table: { columns, rows } };
+  // Power BI sets metadata.segment while more chunks of rows can still be fetched.
+  const metadata: Record<string, unknown> = { columns, objects };
+  if (hasMoreSegments) { metadata['segment'] = {}; }
+  return { metadata, table: { columns, rows } };
 }

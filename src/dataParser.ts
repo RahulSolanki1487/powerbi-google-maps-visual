@@ -5,6 +5,7 @@ import { VisualSettings } from "./settings";
 import { GeoJsonGeometry, parseGeometryCell } from "./geometry";
 
 import DataView = powerbi.DataView;
+import DataViewTable = powerbi.DataViewTable;
 import DataViewMetadataColumn = powerbi.DataViewMetadataColumn;
 import IVisualHost = powerbi.extensibility.visual.IVisualHost;
 import ISelectionId = powerbi.visuals.ISelectionId;
@@ -13,8 +14,9 @@ import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
 /** Describes one row of map data, including its position, legend value, size, color, shapes and tooltip items. */
 export interface MapRow {
     index: number;
-    id: ISelectionId;
-    key: string;
+    /** Selection id; created on first use because building one per row is slow for very large tables. */
+    readonly id: ISelectionId;
+    readonly key: string;
     location?: string;
     lat?: number;
     lng?: number;
@@ -25,8 +27,68 @@ export interface MapRow {
     pathId?: string;
     pathOrder?: number | string;
     geometries: GeoJsonGeometry[];
-    tooltips: VisualTooltipDataItem[];
+    /** Tooltip items; built on first use. */
+    readonly tooltips: VisualTooltipDataItem[];
     color: string;
+}
+
+/** What a row needs to build its selection id and tooltips on demand. */
+interface RowContext {
+    host: IVisualHost;
+    table: DataViewTable;
+    cols: DataViewMetadataColumn[];
+    idx: { [role: string]: number };
+    tooltipCols: { c: DataViewMetadataColumn; i: number }[];
+}
+
+const TOOLTIP_ROLES = ["location", "legend", "pathId", "size", "colorValue"];
+
+/** One map row. The selection id, key and tooltips are created only when first asked for, so loading hundreds of thousands of rows stays fast. */
+class RowRecord implements MapRow {
+    location?: string;
+    lat?: number;
+    lng?: number;
+    geocoded?: boolean;
+    legend?: string;
+    size?: number;
+    colorValue?: number;
+    pathId?: string;
+    pathOrder?: number | string;
+    geometries: GeoJsonGeometry[] = [];
+    color = "";
+
+    private selectionId?: ISelectionId;
+    private tooltipItems?: VisualTooltipDataItem[];
+
+    constructor(private readonly ctx: RowContext, readonly index: number, private readonly tableRow: number) {}
+
+    get id(): ISelectionId {
+        if (!this.selectionId) {
+            this.selectionId = this.ctx.host.createSelectionIdBuilder().withTable(this.ctx.table, this.tableRow).createSelectionId();
+        }
+        return this.selectionId;
+    }
+
+    get key(): string {
+        const id = this.id;
+        return id.getKey ? id.getKey() : String(this.tableRow);
+    }
+
+    get tooltips(): VisualTooltipDataItem[] {
+        if (!this.tooltipItems) {
+            const { cols, idx, tooltipCols, table } = this.ctx;
+            const r = table.rows[this.tableRow];
+            const items: VisualTooltipDataItem[] = [];
+            TOOLTIP_ROLES.forEach(role => {
+                if (idx[role] >= 0 && r[idx[role]] !== null && r[idx[role]] !== undefined) {
+                    items.push({ displayName: cols[idx[role]].displayName, value: formatValue(r[idx[role]], cols[idx[role]]) });
+                }
+            });
+            tooltipCols.forEach(t => items.push({ displayName: t.c.displayName, value: formatValue(r[t.i], t.c) }));
+            this.tooltipItems = items;
+        }
+        return this.tooltipItems;
+    }
 }
 
 /** Describes one legend entry with a name and its color. */
@@ -66,46 +128,30 @@ export function parseData(dataView: DataView | undefined, host: IVisualHost, set
         .map((c, i) => ({ c, i }))
         .filter(x => !!(x.c.roles && x.c.roles["tooltips"]));
 
+    const ctx: RowContext = { host, table, cols, idx, tooltipCols };
+    const defaultColor = settings.dataColors.defaultColor.value.value;
     const rows: MapRow[] = [];
     let sizeMin = Infinity, sizeMax = -Infinity, colMin = Infinity, colMax = -Infinity;
 
     table.rows.forEach((r, rowIndex) => {
         const get = (role: string) => (idx[role] >= 0 ? r[idx[role]] : undefined);
-        const id = host.createSelectionIdBuilder().withTable(table, rowIndex).createSelectionId();
-
-        const row: MapRow = {
-            index: rows.length,
-            id,
-            key: id.getKey ? id.getKey() : String(rowIndex),
-            location: toStr(get("location")),
-            lat: toNum(get("latitude")),
-            lng: toNum(get("longitude")),
-            legend: toStr(get("legend")),
-            size: toNum(get("size")),
-            colorValue: toNum(get("colorValue")),
-            pathId: toStr(get("pathId")),
-            pathOrder: toOrder(get("pathOrder")),
-            geometries: roles["geometry"] ? parseGeometryCell(get("geometry")) : [],
-            tooltips: [],
-            color: settings.dataColors.defaultColor.value.value
-        };
+        const row = new RowRecord(ctx, rows.length, rowIndex);
+        row.location = toStr(get("location"));
+        row.lat = toNum(get("latitude"));
+        row.lng = toNum(get("longitude"));
+        row.legend = toStr(get("legend"));
+        row.size = toNum(get("size"));
+        row.colorValue = toNum(get("colorValue"));
+        row.pathId = toStr(get("pathId"));
+        row.pathOrder = toOrder(get("pathOrder"));
+        row.geometries = roles["geometry"] ? parseGeometryCell(get("geometry")) : [];
+        row.color = defaultColor;
 
         if (row.lat !== undefined && (row.lat < -90 || row.lat > 90)) { row.lat = undefined; }
         if (row.lng !== undefined && (row.lng < -180 || row.lng > 180)) { row.lng = undefined; }
 
         if (row.size !== undefined) { sizeMin = Math.min(sizeMin, row.size); sizeMax = Math.max(sizeMax, row.size); }
         if (row.colorValue !== undefined) { colMin = Math.min(colMin, row.colorValue); colMax = Math.max(colMax, row.colorValue); }
-
-        // Tooltips: every bound field, in a sensible order.
-        const tipRoles = ["location", "legend", "pathId", "size", "colorValue"];
-        tipRoles.forEach(role => {
-            if (idx[role] >= 0 && r[idx[role]] !== null && r[idx[role]] !== undefined) {
-                row.tooltips.push({ displayName: cols[idx[role]].displayName, value: formatValue(r[idx[role]], cols[idx[role]]) });
-            }
-        });
-        tooltipCols.forEach(t => {
-            row.tooltips.push({ displayName: t.c.displayName, value: formatValue(r[t.i], t.c) });
-        });
 
         rows.push(row);
     });

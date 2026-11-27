@@ -7,7 +7,8 @@ import "./../style/visual.less";
 import { VisualSettings } from "./settings";
 import { loadGoogleMaps, onAuthFailure, isAuthFailed } from "./mapsLoader";
 import { MapRow, ParsedData, parseData, emptyData } from "./dataParser";
-import { clusterPoints, Cluster, ClusterPoint } from "./clustering";
+import { clusterForView, viewContains, Cluster, ClusterPoint, ViewBounds } from "./clustering";
+import { decideFetchMore } from "./segmentLoader";
 import { createHeatmapOverlay, HeatmapOverlay } from "./heatmapOverlay";
 
 import VisualConstructorOptions = powerbi.extensibility.visual.VisualConstructorOptions;
@@ -23,6 +24,10 @@ declare const google: any;
 // powerbi.VisualUpdateType flags (const enum in the API typings).
 const UPDATE_RESIZE = 4;
 const UPDATE_RESIZE_END = 16;
+// powerbi.VisualDataChangeOperationKind.Append: the update that follows host.fetchMoreData().
+const OPERATION_APPEND = 1;
+// Above this many points the map only draws clusters near the visible area.
+const CULL_THRESHOLD = 2000;
 
 const PIN_PATH = "M12 0C7.03 0 3 4.03 3 9c0 6.75 9 15 9 15s9-8.25 9-15c0-4.97-4.03-9-9-9z";
 const DIM = 0.22;
@@ -71,6 +76,7 @@ export class Visual implements IVisual {
     private mapEl: HTMLDivElement;
     private messageEl: HTMLDivElement;
     private warnEl: HTMLDivElement;
+    private statusEl: HTMLDivElement;
     private legendEl: HTMLDivElement;
 
     private map: any = null;
@@ -100,6 +106,7 @@ export class Visual implements IVisual {
 
     private lastFitSignature = "";
     private lastClusterZoom = -1;
+    private renderedView: ViewBounds | null = null;
     private pointsDirty = false;
     private suppressMapClickUntil = 0;
     private updateToken = 0;
@@ -116,6 +123,7 @@ export class Visual implements IVisual {
         this.mapEl = this.div("gmv-map");
         this.legendEl = this.div("gmv-legend");
         this.warnEl = this.div("gmv-warn");
+        this.statusEl = this.div("gmv-status");
         this.messageEl = this.div("gmv-message");
 
         onAuthFailure(() => this.showMessage(
@@ -156,6 +164,21 @@ export class Visual implements IVisual {
                 return;
             }
 
+            // Large tables arrive in chunks of 30,000 rows. Ask for the next chunk and, while chunks keep
+            // coming, skip parsing and drawing them; the map is drawn from the first chunk and again at the end.
+            const loadedRows = (dataView && dataView.table && dataView.table.rows ? dataView.table.rows.length : 0);
+            const dl = this.settings.dataLoading;
+            const decision = decideFetchMore(
+                !!(dataView && dataView.metadata && dataView.metadata.segment), loadedRows, dl.loadAll.value, Math.max(1, dl.maxRows.value || 1)
+            );
+            const loadingMore = decision.fetch && this.host.fetchMoreData(true);
+            if (loadingMore) {
+                this.setStatus(`Loading data… ${loadedRows.toLocaleString()} rows so far`);
+                if (options.operationKind === OPERATION_APPEND) { return; }
+            } else {
+                this.setStatus(decision.truncated ? `Showing the first ${loadedRows.toLocaleString()} rows. More data exists but is not loaded.` : "");
+            }
+
             this.data = parseData(dataView, this.host, this.settings);
             const token = ++this.updateToken;
 
@@ -167,7 +190,7 @@ export class Visual implements IVisual {
                     this.applyGeocodeCache();
                     this.queueGeocoding();
                     this.renderAll();
-                    this.host.eventService.renderingFinished(options);
+                    if (!loadingMore) { this.host.eventService.renderingFinished(options); }
                 })
                 .catch((e: Error) => {
                     this.showMessage("Google Maps could not be loaded", e.message);
@@ -273,13 +296,14 @@ export class Visual implements IVisual {
         this.heat = null;
         this.heatOnMap = false;
         this.urlLoaded = this.urlLoading = null;
+        this.renderedView = null;
     }
 
     /** Runs when the map stops moving, redrawing clustered markers if the zoom changed and refreshing the heatmap. */
     private onIdle(): void {
         if (!this.map) { return; }
         const zoom = this.map.getZoom();
-        if (this.settings.markers.cluster.value && (this.pointsDirty || zoom !== this.lastClusterZoom)) {
+        if (this.settings.markers.cluster.value && (this.pointsDirty || zoom !== this.lastClusterZoom || this.viewLeftRenderedArea())) {
             this.pointsDirty = false;
             this.renderPoints();
             this.applySelection();
@@ -324,13 +348,13 @@ export class Visual implements IVisual {
         const zoom = this.map.getZoom();
         this.lastClusterZoom = zoom;
 
+        this.renderedView = null;
         if (ms.cluster.value && pts.length > 1 && zoom < 18) {
-            const proj = this.map.getProjection();
-            if (!proj) { this.pointsDirty = true; return; }
-            const clusters = clusterPoints(pts, zoom, ms.clusterRadius.value, (lat, lng) => {
-                const p = proj.fromLatLngToPoint(new google.maps.LatLng(lat, lng));
-                return { x: p.x, y: p.y };
-            });
+            // For big data sets only cluster the padded visible area, and cap how many markers get drawn.
+            const view = pts.length > CULL_THRESHOLD ? this.paddedView() : null;
+            this.renderedView = view;
+            const maxClusters = Math.max(1, Math.floor(ms.maxMarkers.value || 5000));
+            const clusters = clusterForView(pts, zoom, ms.clusterRadius.value, view, maxClusters);
             clusters.forEach(c => this.points.push(
                 c.rowIndices.length === 1 ? this.createRowMarker(this.data.rows[c.rowIndices[0]]) : this.createClusterMarker(c)
             ));
@@ -341,6 +365,33 @@ export class Visual implements IVisual {
                 this.showWarning(`Showing ${max.toLocaleString()} of ${pts.length.toLocaleString()} points. Turn on clustering or raise "Max markers".`);
             }
         }
+    }
+
+    /** The visible part of the map made 50% larger on every side, or null when the map has no bounds yet. */
+    private paddedView(): ViewBounds | null {
+        const b = this.map && this.map.getBounds && this.map.getBounds();
+        if (!b) { return null; }
+        const ne = b.getNorthEast(), sw = b.getSouthWest();
+        const latPad = (ne.lat() - sw.lat()) / 2;
+        let lngSpan = ne.lng() - sw.lng();
+        if (lngSpan <= 0) { lngSpan += 360; }
+        const wrap = (x: number) => ((x + 540) % 360) - 180;
+        const whole = lngSpan * 2 >= 360;
+        return {
+            south: Math.max(-90, sw.lat() - latPad),
+            north: Math.min(90, ne.lat() + latPad),
+            west: whole ? -180 : wrap(sw.lng() - lngSpan / 2),
+            east: whole ? 180 : wrap(ne.lng() + lngSpan / 2)
+        };
+    }
+
+    /** Tells whether the map was panned or resized beyond the area the current clusters were built for. */
+    private viewLeftRenderedArea(): boolean {
+        const view = this.renderedView;
+        const b = this.map && this.map.getBounds && this.map.getBounds();
+        if (!view || !b) { return false; }
+        const ne = b.getNorthEast(), sw = b.getSouthWest();
+        return !(viewContains(view, ne.lat(), ne.lng()) && viewContains(view, sw.lat(), sw.lng()));
     }
 
     /** Creates a marker for a single data row with its color, size, shape, label, click action and tooltip. */
@@ -992,6 +1043,12 @@ export class Visual implements IVisual {
     /** Hides the centered message. */
     private hideMessage(): void {
         this.messageEl.style.display = "none";
+    }
+
+    /** Shows a small loading or truncation notice in the corner of the map, or hides it when the text is empty. */
+    private setStatus(text: string): void {
+        this.statusEl.textContent = text;
+        this.statusEl.style.display = text ? "block" : "none";
     }
 
     /** Shows a warning text on the map. */

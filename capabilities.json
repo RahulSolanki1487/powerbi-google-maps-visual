@@ -30,7 +30,13 @@
       "conditions": [
         {
           "location": { "max": 1 }, "latitude": { "max": 1 }, "longitude": { "max": 1 },
-          "legend": { "max": 1 }, "size": { "max": 1 }, "colorValue": { "max": 1 },
+          "dataLoading": {
+      "properties": {
+        "loadAll": { "type": { "bool": true } },
+        "maxRows": { "type": { "numeric": true } }
+      }
+    },
+    "legend": { "max": 1 }, "size": { "max": 1 }, "colorValue": { "max": 1 },
           "pathId": { "max": 1 }, "pathOrder": { "max": 1 }, "geometry": { "max": 1 }
         }
       ],

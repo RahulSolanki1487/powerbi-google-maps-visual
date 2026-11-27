@@ -12,6 +12,10 @@ const KEY_STORAGE = 'gmv-harness-api-key';
 // Power BI VisualUpdateType flags.
 const UPDATE_DATA = 2;
 const UPDATE_RESIZE = 4;
+// Power BI delivers at most this many rows per chunk (dataReductionAlgorithm window in capabilities.json).
+const CHUNK_SIZE = 30000;
+const OPERATION_CREATE = 0;
+const OPERATION_APPEND = 1;
 
 @Component({
   selector: 'app-root',
@@ -35,6 +39,8 @@ export class App implements OnDestroy {
   private readonly container = viewChild.required<ElementRef<HTMLDivElement>>('visualHost');
   private visual: VisualInstance | null = null;
   private resizeObserver: ResizeObserver | null = null;
+  /** How many rows have been delivered so far (grows by one chunk per fetchMoreData call). */
+  private deliveredRows = CHUNK_SIZE;
 
   constructor() {
     afterNextRender(() => {
@@ -77,7 +83,7 @@ export class App implements OnDestroy {
   /** Loads a scenario's data, role mapping and format settings, then redraws the map. */
   protected async selectScenario(s: Scenario) {
     this.scenario.set(s);
-    let data = s.table;
+    let data = typeof s.table === 'function' ? s.table() : s.table;
     if (!data && s.csvUrl) { data = parseCsv(await (await fetch(s.csvUrl)).text()); }
     this.table.set(data ?? { headers: [], rows: [] });
     this.dataName.set(s.csvUrl ?? s.title);
@@ -119,7 +125,7 @@ export class App implements OnDestroy {
       host.appendChild(element);
       this.visual = new Visual({
         element,
-        host: createMockHost(entry => this.log.update(l => [entry, ...l].slice(0, 200)))
+        host: createMockHost(entry => this.log.update(l => [entry, ...l].slice(0, 200)), () => this.fetchMore())
       });
       this.render();
     } catch (e) {
@@ -127,8 +133,21 @@ export class App implements OnDestroy {
     }
   }
 
-  private render(type = UPDATE_DATA) {
+  /** Simulates host.fetchMoreData(): delivers the next chunk of rows shortly after, like Power BI does. */
+  private fetchMore(): boolean {
+    const total = this.table().rows.length;
+    if (this.deliveredRows >= total) { return false; }
+    setTimeout(() => {
+      this.deliveredRows = Math.min(total, this.deliveredRows + CHUNK_SIZE);
+      this.render(UPDATE_DATA, OPERATION_APPEND);
+    }, 150);
+    return true;
+  }
+
+  private render(type = UPDATE_DATA, operationKind = OPERATION_CREATE) {
     if (!this.visual) { return; }
+    // A new Create update starts again from the first chunk. Resizes keep what was delivered.
+    if (operationKind === OPERATION_CREATE && type !== UPDATE_RESIZE) { this.deliveredRows = CHUNK_SIZE; }
     let objects: Record<string, Record<string, unknown>>;
     try {
       objects = JSON.parse(this.objectsText());
@@ -140,14 +159,16 @@ export class App implements OnDestroy {
     objects['mapSettings'] = { ...objects['mapSettings'], apiKey: this.apiKey() };
 
     const el = this.container().nativeElement;
-    const dataView = buildDataView(this.table(), this.roleMap(), objects);
+    const all = this.table();
+    const shown = Math.min(all.rows.length, this.deliveredRows);
+    const dataView = buildDataView({ headers: all.headers, rows: all.rows.slice(0, shown) }, this.roleMap(), objects, shown < all.rows.length);
     this.visual.update({
       dataViews: [dataView],
       viewport: { width: el.clientWidth, height: el.clientHeight },
       type,
       viewMode: 1,
       editMode: 0,
-      operationKind: 0,
+      operationKind,
       jsonFilters: []
     });
   }

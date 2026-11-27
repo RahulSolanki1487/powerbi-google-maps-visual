@@ -156,6 +156,16 @@ export class LegendCard extends formattingSettings.SimpleCard {
     slices: formattingSettings.Slice[] = [this.show, this.title];
 }
 
+/** Settings card for loading large data sets: whether to fetch every chunk of rows and where to stop. */
+export class DataLoadingCard extends formattingSettings.SimpleCard {
+    loadAll = toggle("loadAll", "Load all rows (in chunks of 30,000)", true);
+    maxRows = num("maxRows", "Max rows to load", 500000);
+
+    name = "dataLoading";
+    displayName = "Data loading";
+    slices: formattingSettings.Slice[] = [this.loadAll, this.maxRows];
+}
+
 /** Collects all the settings cards of the visual into one model. */
 export class VisualSettings extends formattingSettings.Model {
     map = new MapSettingsCard();
@@ -166,6 +176,7 @@ export class VisualSettings extends formattingSettings.Model {
     heatmap = new HeatmapCard();
     geocoding = new GeocodingCard();
     legend = new LegendCard();
+    dataLoading = new DataLoadingCard();
 
-    cards = [this.map, this.dataColors, this.markers, this.lines, this.geography, this.heatmap, this.geocoding, this.legend];
+    cards = [this.map, this.dataColors, this.markers, this.lines, this.geography, this.heatmap, this.geocoding, this.legend, this.dataLoading];
 }
