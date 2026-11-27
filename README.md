@@ -18,6 +18,28 @@ A Power BI custom visual (`pbiviz`, API 5.x, TypeScript) that puts a Google Map 
 | **Map options** | Roadmap / satellite / hybrid / terrain, Style JSON, Map ID (cloud styling and Advanced Markers), traffic / transit / bicycling layers, auto-zoom to data, controls on/off. |
 | **Power BI integration** | Cross-filtering and highlighting (click, Ctrl+click, click the map to clear), bookmark-aware selection, native tooltips plus report-page tooltips, right-click context menu (drill-through), legend, landing page, up to 500,000 rows (loaded in chunks). |
 
+## Screenshots
+
+Captured from the [test app](sample-angular-app/), which runs the visual with the same data and settings you would use in Power BI.
+
+**Clustering:** nearby points grouped into numbered clusters that split as you zoom.
+![Clustering](docs/screenshots/clustering.jpg)
+
+**Heatmap:** weighted by the Size field.
+![Heatmap](docs/screenshots/heatmap.jpg)
+
+**Bubbles:** circle area scales with a measure.
+![Bubbles sized by a measure](docs/screenshots/bubbles.jpg)
+
+**Pins:** classic markers from latitude and longitude.
+![Pins](docs/screenshots/pins.jpg)
+
+**Marker labels:** names under each marker, with a native-style tooltip on hover.
+![Marker labels and tooltip](docs/screenshots/marker-labels.jpg)
+
+**Shapes from GeoJSON:** a polygon, a line and a point from one Geometry column, with a legend.
+![GeoJSON shapes with legend](docs/screenshots/geojson-shapes.jpg)
+
 ## Data fields
 
 | Field | Use |
