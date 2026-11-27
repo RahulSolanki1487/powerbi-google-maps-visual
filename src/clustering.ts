@@ -5,9 +5,12 @@
  * so clusters stay stable while panning and only change when the zoom changes.
  */
 
+/** Describes one map point with its latitude, longitude and the index of the data row it came from. */
 export interface ClusterPoint { lat: number; lng: number; rowIndex: number; }
+/** Describes a group of nearby points by its average latitude and longitude and the data rows it contains. */
 export interface Cluster { lat: number; lng: number; rowIndices: number[]; }
 
+/** Groups nearby points into clusters by placing them in a pixel grid at the current zoom level and averaging each cell. */
 export function clusterPoints(
     points: ClusterPoint[],
     zoom: number,

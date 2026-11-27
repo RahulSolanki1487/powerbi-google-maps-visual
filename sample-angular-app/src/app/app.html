@@ -1,0 +1,71 @@
+<header>
+  <h1>Google Maps visual — test harness</h1>
+  <label class="key">
+    API key
+    <input type="password" placeholder="AIza..." [value]="apiKey()" (change)="onKey($any($event.target).value)" (keyup.enter)="onKey($any($event.target).value); apply()" />
+  </label>
+  <button (click)="showSetup.set(!showSetup())">{{ showSetup() ? 'Back to examples' : 'How to setup' }}</button>
+  <button (click)="apply()">Apply</button>
+  <button (click)="remount()" title="Reload visual.js after rebuilding the visual">Reload visual</button>
+</header>
+
+@if (error()) { <div class="error">{{ error() }}</div> }
+
+@if (showSetup()) { <app-setup-guide /> }
+
+<main [hidden]="showSetup()">
+  <aside>
+    <section>
+      <h2>Examples</h2>
+      <div class="menu">
+        @for (s of scenarios; track s.id) {
+          <button [class.active]="scenario()?.id === s.id" (click)="selectScenario(s)">{{ s.title }}</button>
+        }
+      </div>
+      @if (scenario(); as s) {
+        <p class="desc">{{ s.description }}</p>
+        @if (s.needsGeocoding) { <p class="warn">Needs the Geocoding API enabled on your key.</p> }
+      }
+    </section>
+
+    <section>
+      <h2>Data <small>{{ dataName() }} · {{ table().rows.length }} rows</small></h2>
+      <div class="row">
+        <label>Custom CSV <input type="file" accept=".csv" (change)="onFile($event)" /></label>
+      </div>
+      <table>
+        <thead><tr><th>CSV column</th><th>Data role</th></tr></thead>
+        <tbody>
+          @for (h of table().headers; track h) {
+            <tr>
+              <td>{{ h }}</td>
+              <td>
+                <select (change)="setRole(h, $any($event.target).value)">
+                  <option value="" [selected]="!roleMap()[h]">(not used)</option>
+                  @for (r of roles; track r) { <option [value]="r" [selected]="roleMap()[h] === r">{{ r }}</option> }
+                </select>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Format objects <small>(capabilities.json "objects")</small></h2>
+      <textarea spellcheck="false" [value]="objectsText()" (input)="setObjects($any($event.target).value)" (blur)="apply()"></textarea>
+    </section>
+  </aside>
+
+  <section class="stage">
+    <div class="visual-host" #visualHost></div>
+    <p class="hint">Drag the bottom-right corner to resize the visual.</p>
+
+    <h2>Host events <button (click)="clearLog()">Clear</button></h2>
+    <ul class="log">
+      @for (e of log(); track $index) {
+        <li><time>{{ e.time }}</time> <b>{{ e.kind }}</b> {{ e.message }}</li>
+      }
+    </ul>
+  </section>
+</main>

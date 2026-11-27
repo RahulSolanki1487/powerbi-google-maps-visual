@@ -27,6 +27,7 @@ const UPDATE_RESIZE_END = 16;
 const PIN_PATH = "M12 0C7.03 0 3 4.03 3 9c0 6.75 9 15 9 15s9-8.25 9-15c0-4.97-4.03-9-9-9z";
 const DIM = 0.22;
 
+/** Describes how one marker looks: color, size, shape, opacity and an optional label or cluster count. */
 interface MarkerStyle {
     color: string;
     size: number;
@@ -36,24 +37,30 @@ interface MarkerStyle {
     clusterCount?: number;
 }
 
+/** Describes what a marker does: its click action, its tooltip content and the data rows it stands for. */
 interface MarkerHandlers {
     onClick: (ev: MouseEvent | undefined) => void;
     tooltip: () => VisualTooltipDataItem[];
     ids: () => ISelectionId[];
 }
 
+/** Describes a marker on the map that remembers its data rows and can be dimmed or removed. */
 interface PointHandle {
     rowIndices: number[];
+    /** Dims the marker when true, or restores it to normal when false. */
     setDim(dim: boolean): void;
+    /** Removes the marker from the map. */
     remove(): void;
 }
 
+/** Describes a line on the map with its data rows, the drawn path and its normal opacity. */
 interface LineHandle {
     rowIndices: number[];
     polyline: any;
     baseOpacity: number;
 }
 
+/** The main Power BI visual that draws markers, lines, shapes and a heatmap on a Google map and handles selection, tooltips, legend and geocoding. */
 export class Visual implements IVisual {
     private host: IVisualHost;
     private selectionManager: ISelectionManager;
@@ -97,6 +104,7 @@ export class Visual implements IVisual {
     private suppressMapClickUntil = 0;
     private updateToken = 0;
 
+    /** Sets up the visual: creates the selection manager and the page elements for map, legend, warning and message, and shows a message if the API key is rejected. */
     constructor(options: VisualConstructorOptions) {
         this.host = options.host;
         this.selectionManager = this.host.createSelectionManager();
@@ -119,6 +127,7 @@ export class Visual implements IVisual {
 
     // ------------------------------------------------------------------ update
 
+    /** Handles each Power BI update by reading settings and data, checking the API key, loading Google Maps and redrawing the map. */
     public update(options: VisualUpdateOptions): void {
         this.host.eventService.renderingStarted(options);
         try {
@@ -171,16 +180,19 @@ export class Visual implements IVisual {
         }
     }
 
+    /** Returns the formatting model that Power BI shows in the format pane. */
     public getFormattingModel(): powerbi.visuals.FormattingModel {
         return this.fmtService.buildFormattingModel(this.settings);
     }
 
+    /** Cleans up the map when Power BI removes the visual. */
     public destroy(): void {
         this.destroyMap();
     }
 
     // ------------------------------------------------------------------ map lifecycle
 
+    /** Creates the Google map if needed, or rebuilds it when the map ID changed, and hooks up click, right click and idle events. */
     private ensureMap(): void {
         const s = this.settings.map;
         const mapId = (s.mapId.value || "").trim() || null;
@@ -246,6 +258,7 @@ export class Visual implements IVisual {
         this.bicyclingLayer.setMap(s.bicycling.value ? this.map : null);
     }
 
+    /** Removes all markers, lines, layers and listeners and discards the map. */
     private destroyMap(): void {
         if (!this.map) { return; }
         this.clearPoints();
@@ -262,6 +275,7 @@ export class Visual implements IVisual {
         this.urlLoaded = this.urlLoading = null;
     }
 
+    /** Runs when the map stops moving, redrawing clustered markers if the zoom changed and refreshing the heatmap. */
     private onIdle(): void {
         if (!this.map) { return; }
         const zoom = this.map.getZoom();
@@ -275,6 +289,7 @@ export class Visual implements IVisual {
 
     // ------------------------------------------------------------------ rendering
 
+    /** Redraws everything on the map: shapes, lines, markers, heatmap and legend, then fits the view and applies the selection. */
     private renderAll(): void {
         if (!this.map) { return; }
         this.clearWarning();
@@ -289,6 +304,7 @@ export class Visual implements IVisual {
         this.applySelection();
     }
 
+    /** Draws the markers, grouping nearby points into clusters when clustering is on, and skips points that belong to hidden path lines. */
     private renderPoints(): void {
         this.clearPoints();
         const ms = this.settings.markers;
@@ -327,6 +343,7 @@ export class Visual implements IVisual {
         }
     }
 
+    /** Creates a marker for a single data row with its color, size, shape, label, click action and tooltip. */
     private createRowMarker(row: MapRow): PointHandle {
         const ms = this.settings.markers;
         return this.createMarker(
@@ -347,6 +364,7 @@ export class Visual implements IVisual {
         );
     }
 
+    /** Creates a marker for a cluster of rows, sized by the count and colored by the most common legend group, which zooms in when clicked. */
     private createClusterMarker(c: Cluster): PointHandle {
         const rows = c.rowIndices.map(i => this.data.rows[i]);
         const n = rows.length;
@@ -485,6 +503,7 @@ export class Visual implements IVisual {
         };
     }
 
+    /** Draws a line for each path by grouping rows by path ID, ordering them and adding optional arrows and click handling. */
     private renderLines(): void {
         this.clearLines();
         const ls = this.settings.lines;
@@ -548,6 +567,7 @@ export class Visual implements IVisual {
         });
     }
 
+    /** Draws the shapes found in the geometry column and shows a warning if some could not be drawn. */
     private renderGeometryRows(): void {
         const layer = this.rowGeoLayer;
         if (!layer) { return; }
@@ -566,6 +586,7 @@ export class Visual implements IVisual {
         this.styleDataLayers();
     }
 
+    /** Downloads the boundary file from the configured address and draws it on the map, warning when it cannot be loaded. */
     private renderUrlGeo(): void {
         const layer = this.urlGeoLayer;
         if (!layer) { return; }
@@ -599,6 +620,7 @@ export class Visual implements IVisual {
             });
     }
 
+    /** Shows, updates or hides the heatmap using the data points and heatmap settings. */
     private renderHeatmap(): void {
         if (!this.heat) { return; }
         const h = this.settings.heatmap;
@@ -613,6 +635,7 @@ export class Visual implements IVisual {
         this.heat.setData(pts, h.radius.value, clamp01(h.opacity.value / 100), h.intensity.value);
     }
 
+    /** Rebuilds the legend box with a title and color swatches, limited to 25 entries, or hides it when there is nothing to show. */
     private renderLegend(): void {
         const l = this.settings.legend;
         const items = this.data.legend;
@@ -650,6 +673,7 @@ export class Visual implements IVisual {
 
     // ------------------------------------------------------------------ data layers (shapes)
 
+    /** Creates a map data layer for shapes that handles click, hover and tooltip events by finding the data row for each shape. */
     private createDataLayer(resolveRow: (feature: any) => number | undefined): any {
         const layer = new google.maps.Data({ map: this.map });
 
@@ -691,17 +715,20 @@ export class Visual implements IVisual {
         return layer;
     }
 
+    /** Rebuilds the lookup from location names to data row numbers used to match shapes to rows. */
     private rebuildJoinIndex(): void {
         this.joinIndex.clear();
         this.data.rows.forEach(r => { if (r.location) { this.joinIndex.set(norm(r.location), r.index); } });
     }
 
+    /** Finds the data row that matches a boundary shape using its chosen property, or nothing if there is no match. */
     private urlRowFor(feature: any): number | undefined {
         const prop = (this.settings.geography.joinProperty.value || "name").trim();
         const v = feature.getProperty(prop);
         return v === undefined || v === null ? undefined : this.joinIndex.get(norm(String(v)));
     }
 
+    /** Styles the shape layers by row color, opacity and border, dimming unselected shapes and hiding or graying unmatched ones. */
     private styleDataLayers(): void {
         const g = this.settings.geography;
         const fillOpacity = clamp01(g.fillOpacity.value / 100);
@@ -752,6 +779,7 @@ export class Visual implements IVisual {
 
     // ------------------------------------------------------------------ selection, tooltips
 
+    /** Selects the given rows in Power BI when clicked, adding to the selection if a modifier key is held. */
     private onRowsClick(rowIndices: number[], ev: MouseEvent | undefined): void {
         this.suppressMapClickUntil = Date.now() + 400;
         const ids = rowIndices.map(i => this.data.rows[i].id);
@@ -759,6 +787,7 @@ export class Visual implements IVisual {
         this.selectionManager.select(ids, multi).then(() => this.applySelection());
     }
 
+    /** Reads the current Power BI selection and dims markers, lines and shapes that are not selected. */
     private applySelection(): void {
         const sel = (this.selectionManager.getSelectionIds() || []) as ISelectionId[];
         this.selectedKeys = new Set(sel.map(s => (s.getKey ? s.getKey() : JSON.stringify(s))));
@@ -772,6 +801,7 @@ export class Visual implements IVisual {
         this.styleDataLayers();
     }
 
+    /** Builds the tooltip items for a row, falling back to latitude and longitude and noting when the position was geocoded. */
     private rowTooltip(row: MapRow): VisualTooltipDataItem[] {
         const items = row.tooltips.slice();
         if (!items.length && row.lat !== undefined) {
@@ -782,12 +812,14 @@ export class Visual implements IVisual {
         return items;
     }
 
+    /** Makes an element show, move and hide the Power BI tooltip as the mouse enters, moves over and leaves it. */
     private attachDomTooltip(el: HTMLElement, h: MarkerHandlers): void {
         el.addEventListener("mouseenter", (ev: MouseEvent) => this.showTooltip(ev, h.tooltip(), h.ids()));
         el.addEventListener("mousemove", (ev: MouseEvent) => this.showTooltip(ev, h.tooltip(), h.ids(), true));
         el.addEventListener("mouseleave", () => this.hideTooltip());
     }
 
+    /** Shows or moves the Power BI tooltip at the mouse position with the given items. */
     private showTooltip(ev: MouseEvent | undefined, items: VisualTooltipDataItem[], ids: ISelectionId[], move = false): void {
         if (!ev || !items.length) { return; }
         const p = this.pos(ev);
@@ -795,10 +827,12 @@ export class Visual implements IVisual {
         if (move) { this.host.tooltipService.move(opts); } else { this.host.tooltipService.show(opts); }
     }
 
+    /** Hides the Power BI tooltip immediately. */
     private hideTooltip(): void {
         this.host.tooltipService.hide({ immediately: true, isTouchEvent: false });
     }
 
+    /** Converts a mouse event position into coordinates relative to the visual. */
     private pos(ev: MouseEvent): { x: number; y: number } {
         const rect = this.root.getBoundingClientRect();
         return { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
@@ -806,6 +840,7 @@ export class Visual implements IVisual {
 
     // ------------------------------------------------------------------ fit, geocoding
 
+    /** Moves and zooms the map to fit all points and shapes when the data changed, or to the default view when there is no data. */
     private fitIfNeeded(): void {
         if (!this.map || !this.settings.map.autoFit.value) { return; }
 
@@ -841,6 +876,7 @@ export class Visual implements IVisual {
         }
     }
 
+    /** Fills in missing latitude and longitude on rows from positions already looked up by geocoding. */
     private applyGeocodeCache(): void {
         if (!this.settings.geocoding.enable.value) { return; }
         this.data.rows.forEach(r => {
@@ -851,6 +887,7 @@ export class Visual implements IVisual {
         });
     }
 
+    /** Adds location texts that still have no position to the lookup queue and starts processing it. */
     private queueGeocoding(): void {
         if (!this.settings.geocoding.enable.value || !this.geocoder) { return; }
         const queued = new Set(this.geocodeQueue.map(norm));
@@ -864,6 +901,7 @@ export class Visual implements IVisual {
         if (!this.geocodeRunning && this.geocodeQueue.length) { this.processGeocodeQueue(); }
     }
 
+    /** Looks up the next queued location with the geocoder, saves the result, retries when over the limit and warns if access is denied. */
     private processGeocodeQueue(): void {
         const next = this.geocodeQueue.shift();
         if (!next || !this.geocoder) { this.geocodeRunning = false; return; }
@@ -892,6 +930,7 @@ export class Visual implements IVisual {
         });
     }
 
+    /** Waits a short time after a lookup, then applies the found positions and redraws the map. */
     private scheduleGeocodeRender(): void {
         clearTimeout(this.geocodeTimer);
         this.geocodeTimer = setTimeout(() => {
@@ -903,6 +942,7 @@ export class Visual implements IVisual {
 
     // ------------------------------------------------------------------ helpers
 
+    /** Works out the marker size for a row from its size value within the range, so bubble area follows the value. */
     private markerSize(row: MapRow): number {
         const ms = this.settings.markers;
         const range = this.data.sizeRange;
@@ -915,16 +955,19 @@ export class Visual implements IVisual {
         return Math.max(4, ms.size.value);
     }
 
+    /** Removes all markers from the map and forgets them. */
     private clearPoints(): void {
         this.points.forEach(p => p.remove());
         this.points = [];
     }
 
+    /** Removes all lines from the map and forgets them. */
     private clearLines(): void {
         this.lines.forEach(l => { google.maps.event.clearInstanceListeners(l.polyline); l.polyline.setMap(null); });
         this.lines = [];
     }
 
+    /** Creates a div with the given class name inside the visual and returns it. */
     private div(cls: string): HTMLDivElement {
         const d = document.createElement("div");
         d.className = cls;
@@ -932,6 +975,7 @@ export class Visual implements IVisual {
         return d;
     }
 
+    /** Shows a centered message with a title and body text. */
     private showMessage(title: string, body: string): void {
         this.messageEl.replaceChildren();
         const t = document.createElement("div");
@@ -945,15 +989,18 @@ export class Visual implements IVisual {
         this.messageEl.style.display = "flex";
     }
 
+    /** Hides the centered message. */
     private hideMessage(): void {
         this.messageEl.style.display = "none";
     }
 
+    /** Shows a warning text on the map. */
     private showWarning(text: string): void {
         this.warnEl.textContent = text;
         this.warnEl.style.display = "block";
     }
 
+    /** Hides the warning text. */
     private clearWarning(): void {
         this.warnEl.style.display = "none";
     }
@@ -961,14 +1008,17 @@ export class Visual implements IVisual {
 
 // ---------------------------------------------------------------------- module helpers
 
+/** Limits a number to between 0 and 1, treating invalid values as 1. */
 function clamp01(v: number): number {
     return Math.min(1, Math.max(0, isFinite(v) ? v : 1));
 }
 
+/** Trims text and makes it lower case so names can be compared. */
 function norm(s: string): string {
     return s.trim().toLowerCase();
 }
 
+/** Shortens a count for display, such as 1.5k or 2.0M. */
 function compactCount(n: number): string {
     if (n >= 1e6) { return `${(n / 1e6).toFixed(1)}M`; }
     if (n >= 1e4) { return `${Math.round(n / 1e3)}k`; }
@@ -976,6 +1026,7 @@ function compactCount(n: number): string {
     return String(n);
 }
 
+/** Compares two rows by path order, using numbers when both are numeric, natural text order otherwise and row order when missing. */
 function byPathOrder(a: MapRow, b: MapRow): number {
     const x = a.pathOrder, y = b.pathOrder;
     if (x === undefined && y === undefined) { return a.index - b.index; }
@@ -985,6 +1036,7 @@ function byPathOrder(a: MapRow, b: MapRow): number {
     return String(x).localeCompare(String(y), undefined, { numeric: true });
 }
 
+/** Builds a pin shaped icon in the given color and size as a small vector image. */
 function pinSvg(color: string, size: number): SVGSVGElement {
     const ns = "http://www.w3.org/2000/svg";
     const svg = document.createElementNS(ns, "svg");

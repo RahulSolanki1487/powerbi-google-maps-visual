@@ -7,16 +7,22 @@
  * after the Maps API has loaded.
  */
 
+/** Describes one heatmap point with its latitude, longitude and weight. */
 export interface HeatPoint { lat: number; lng: number; weight: number; }
 
+/** Describes what a heatmap layer can do: attach to a map, receive points and settings, and redraw. */
 export interface HeatmapOverlay {
+    /** Attaches the heatmap layer to a map or removes it when given nothing. */
     setMap(map: any): void;
+    /** Gives the heatmap its points, radius, opacity and intensity. */
     setData(points: HeatPoint[], radius: number, opacity: number, intensity: number): void;
+    /** Redraws the heatmap to match the current map view. */
     draw(): void;
 }
 
 let HeatmapClass: any = null;
 
+/** Creates a heatmap layer for the map, defining its drawing class the first time it is called. */
 export function createHeatmapOverlay(): HeatmapOverlay {
     const google = (window as any).google;
     if (!HeatmapClass) {
@@ -104,6 +110,7 @@ export function createHeatmapOverlay(): HeatmapOverlay {
     return new HeatmapClass() as HeatmapOverlay;
 }
 
+/** Builds a 256-step color scale running from blue through cyan, green and yellow to red. */
 function buildPalette(): Uint8ClampedArray {
     const c = document.createElement("canvas");
     c.width = 256; c.height = 1;

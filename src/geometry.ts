@@ -6,6 +6,7 @@
  * Works with SQL Server / Azure SQL geography.STAsText() output.
  */
 
+/** Describes a GeoJSON shape with its type and either coordinates or a list of nested shapes. */
 export interface GeoJsonGeometry {
     type: string;
     coordinates?: any;
@@ -15,6 +16,7 @@ export interface GeoJsonGeometry {
 const NUM = "[-+]?(?:\\d+\\.?\\d*|\\.\\d+)(?:[eE][-+]?\\d+)?";
 const COORD_RE = new RegExp(`(${NUM})\\s+(${NUM})(?:\\s+${NUM})*`, "g");
 
+/** Reads a table cell holding GeoJSON or WKT text and returns the shapes in it, or an empty list when it cannot be read. */
 export function parseGeometryCell(raw: unknown): GeoJsonGeometry[] {
     if (raw === null || raw === undefined) { return []; }
     const text = String(raw).trim();
@@ -30,6 +32,7 @@ export function parseGeometryCell(raw: unknown): GeoJsonGeometry[] {
     }
 }
 
+/** Extracts shapes from a GeoJSON object, unwrapping feature collections and features and ignoring unknown types. */
 export function parseGeoJson(obj: any): GeoJsonGeometry[] {
     if (!obj || typeof obj !== "object") { return []; }
     switch (obj.type) {
@@ -45,6 +48,7 @@ export function parseGeoJson(obj: any): GeoJsonGeometry[] {
     }
 }
 
+/** Converts a WKT shape text into a GeoJSON shape, or returns nothing when the text is empty or not recognised. */
 export function parseWkt(input: string): GeoJsonGeometry | null {
     const s = input.trim().replace(/^SRID=\d+;/i, "");
     const m = /^([A-Za-z]+)\s*(?:ZM|Z|M)?\s*(\(.*\)|EMPTY)$/s.exec(s);
@@ -84,6 +88,7 @@ export function parseWkt(input: string): GeoJsonGeometry | null {
     }
 }
 
+/** Splits text on commas that are not inside parentheses and returns the trimmed parts. */
 function splitTopLevel(s: string): string[] {
     const out: string[] = [];
     let depth = 0, start = 0;

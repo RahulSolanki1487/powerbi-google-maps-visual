@@ -12,15 +12,18 @@ let loadedKey: string | null = null;
 let authFailed = false;
 const authListeners: Array<() => void> = [];
 
+/** Registers a function to call when Google rejects the API key, calling it at once if that already happened. */
 export function onAuthFailure(cb: () => void): void {
     authListeners.push(cb);
     if (authFailed) { cb(); }
 }
 
+/** Tells whether Google has rejected the API key. */
 export function isAuthFailed(): boolean {
     return authFailed;
 }
 
+/** Loads the Google Maps script once for the given API key and returns a promise that finishes when it is ready, refusing a different key afterwards. */
 export function loadGoogleMaps(apiKey: string): Promise<void> {
     const w = window as any;
 

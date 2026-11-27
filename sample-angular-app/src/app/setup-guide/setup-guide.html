@@ -1,0 +1,67 @@
+<nav>
+  <a href="#test">1. Test locally</a>
+  <a href="#google">2. Google key</a>
+  <a href="#package">3. Build the visual</a>
+  <a href="#report">4. Power BI report</a>
+  <a href="#embed">5. Your own app</a>
+</nav>
+
+<h2 id="test">1. Test the visual locally (this app)</h2>
+<ol>
+  <li>In <code>sample-angular-app</code> run <code>npm install</code>, then <code>npm run dev</code>.</li>
+  <li>Open <code>http://localhost:4200</code> and paste your Google Maps API key in the header, then press <b>Apply</b>.</li>
+  <li>Pick any button under <b>Examples</b>. The map reloads with that feature.</li>
+  <li>Edit the <b>Format objects</b> JSON or upload your own CSV to try your data. Click <b>Reload visual</b> after you change the visual's source.</li>
+</ol>
+<p>This app uses a mock Power BI host. Report-page tooltips, bookmarks and real cross-visual filtering only work in Power BI.</p>
+
+<h2 id="google">2. Get a Google Maps API key</h2>
+<ol>
+  <li>In Google Cloud Console, enable <b>Maps JavaScript API</b> (and <b>Geocoding API</b> if you use addresses) and turn on billing.</li>
+  <li>Create an API key and use <b>API restrictions</b>. Power BI runs visuals in a sandboxed iframe with no origin, so HTTP-referrer restrictions make Google reject the key. For this test app only, you can add <code>http://localhost:4200/*</code> as a referrer.</li>
+  <li>Optional: create a <b>Map ID</b> (<code>DEMO_MAP_ID</code> works for testing) for Advanced Markers and cloud styling.</li>
+</ol>
+<p class="note">The key is stored inside the report, so anyone who can edit the report can read it. Use a dedicated key with quotas.</p>
+
+<h2 id="package">3. Build the visual file</h2>
+<pre>{{ build }}</pre>
+<p>Give the resulting <code>.pbiviz</code> file to report authors.</p>
+
+<h2 id="report">4. Use it in a Power BI report</h2>
+<h3>Power BI Desktop</h3>
+<ol>
+  <li><b>File → Options and settings → Options → Current file → Report settings</b>, tick <b>Developer mode</b> for this session.</li>
+  <li>In <b>Visualizations</b>, click <b>…</b> → <b>Import a visual from a file</b> and choose the <code>.pbiviz</code>.</li>
+  <li>Add the <b>Google Maps</b> icon to the page and size it.</li>
+  <li><b>Format visual → Map → Google Maps API key</b>: paste your key.</li>
+  <li>Drag fields into the wells: Latitude and Longitude (set to <b>Don't summarize</b>), Legend, Size, Color saturation, Path ID + Path order for lines, or Geometry for shapes. The Examples menu in this app shows which roles each feature needs.</li>
+</ol>
+<h3>Power BI Service</h3>
+<ol>
+  <li>Open the report, click <b>Edit</b>, then <b>…</b> → <b>Import a visual from a file</b>. This needs the tenant setting <i>Allow visuals created using the Power BI SDK</i>.</li>
+  <li>Or, for teams: an admin uploads the file once under <b>Admin portal → Organizational visuals</b>, so it appears for everyone.</li>
+  <li>Click <b>Publish</b> in Desktop to share the report.</li>
+</ol>
+
+<h2 id="embed">5. Use it in your own application</h2>
+<p>Your app embeds a <b>Power BI report that contains the visual</b>, using Power BI Embedded. The visual itself is not an Angular component.</p>
+<h3>Prerequisites</h3>
+<ul>
+  <li>The report from step 4 is published to a workspace on Fabric/Power BI capacity (an F, P or A SKU).</li>
+  <li>An Azure AD app registration (service principal) that is allowed to use Power BI APIs and is a member of that workspace.</li>
+  <li>The visual is saved inside the report. Importing it into the <code>.pbix</code> (step 4, Desktop) is the simplest route. Check Microsoft's embedding documentation before relying on organizational visuals in an embed.</li>
+</ul>
+<h3>Steps</h3>
+<ol>
+  <li>Add a small backend endpoint that returns the report id, embed URL and an embed token. Never put the service principal secret in the browser.</li>
+  <li>Install the client library in your Angular app:</li>
+</ol>
+<pre>{{ embedInstall }}</pre>
+<ol start="3"><li>Backend outline:</li></ol>
+<pre>{{ embedBackend }}</pre>
+<ol start="4"><li>Embed the report in a component:</li></ol>
+<pre>{{ embedComponent }}</pre>
+<ol start="5">
+  <li>Serve your app over HTTPS in production and make sure the network allows <code>maps.googleapis.com</code>.</li>
+  <li>If the visual shows "Google rejected the API key", fix the key as described in section 2.</li>
+</ol>
