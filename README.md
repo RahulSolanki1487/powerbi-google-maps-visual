@@ -201,13 +201,95 @@ The [`sample-angular-app`](sample-angular-app/) has a **How to setup** page with
 
 > The key is saved in the report, so anyone who can edit the report can read it. Use a dedicated key with API restrictions and quotas.
 
+## Working with large data
+
+### How loading works
+
+Power BI sends rows to a visual in chunks of at most 30,000. This visual asks for the next chunk until all rows have arrived, so a 500,000-row table is delivered as about 17 chunks.
+
+1. The first chunk arrives and the map is drawn from it straight away.
+2. While more chunks arrive, a note in the corner of the map shows "Loading data… N rows so far". The map is not redrawn for each chunk, so the page stays responsive.
+3. When the last chunk is in (or the limit is reached), the map is drawn once with all rows and the note disappears.
+
+Settings are in **Format visual → Data loading**:
+
+| Setting | Default | What it does |
+|---|---|---|
+| Load all rows (in chunks of 30,000) | On | Off keeps only the first 30,000 rows and shows a note that more data exists. |
+| Max rows to load | 500,000 | Stops requesting chunks once this many rows have arrived. Rows beyond it are left out and a note says so. |
+
+To keep zooming and panning smooth with many points, turn **Markers → Cluster markers** on. For large data sets the visual then clusters only the visible area (plus a margin) and caps the number of markers drawn using **Max markers**. Panning past the drawn area redraws it.
+
+### Limits
+
+- **Power BI caps custom visuals at about 1 million rows**, whatever you set in *Max rows to load*.
+- **Loading takes time.** Every chunk is a separate request to your data source, so 500,000 rows can take noticeably longer than 30,000, and the report holds all rows in memory. DirectQuery sources are slower than imported data.
+- **Rows left out are not random.** If you hit the limit, you get whichever rows Power BI delivers first. Filter or aggregate the data instead of relying on the cut-off.
+- **No clustering means a marker cap.** Without clustering, only *Max markers* points (default 5,000) are drawn, and a note says so.
+- **Selecting a huge cluster is slow.** Ctrl+click on a cluster that holds many thousands of rows has to build a selection for each of them.
+- **Heavy columns multiply the cost.** A Geometry column (GeoJSON / WKT) per row, or geocoding many addresses, is far more expensive than plain latitude and longitude. Geocode once in your pipeline and store the coordinates.
+- These numbers come from tests with synthetic data in a browser. I have not measured a real 500,000-row Power BI report, so check how your own data source behaves.
+
+### Optimization: aggregate to a grid first
+
+The fastest map is one that receives fewer rows. If you want to see density rather than individual records, group the points into grid cells **in your data source before the visual**. This is a data-preparation step in SQL, Power Query or the data model. It is not part of the visual, and the visual needs no change for it.
+
+Round latitude and longitude to a grid, then count (or sum) the rows in each cell:
+
+| Decimal places | Cell size (about) |
+|---|---|
+| 0 | 111 km |
+| 1 | 11 km |
+| 2 | 1.1 km |
+| 3 | 110 m |
+
+Longitude cells get narrower away from the equator.
+
+**SQL (a view or the query you import):**
+
+```sql
+SELECT ROUND(Latitude, 2)  AS Lat,
+       ROUND(Longitude, 2) AS Lng,
+       COUNT(*)            AS Points,
+       SUM(Sales)          AS Sales
+FROM   Locations
+GROUP BY ROUND(Latitude, 2), ROUND(Longitude, 2)
+```
+
+**Power Query (Transform data → Advanced Editor):**
+
+```
+let
+    Source  = Locations,
+    Rounded = Table.TransformColumns(Source, {
+        {"Latitude",  each Number.Round(_, 2), type number},
+        {"Longitude", each Number.Round(_, 2), type number}}),
+    Grouped = Table.Group(Rounded, {"Latitude", "Longitude"}, {
+        {"Points", each Table.RowCount(_), Int64.Type},
+        {"Sales",  each List.Sum([Sales]), type number}})
+in
+    Grouped
+```
+
+Then in the report:
+
+| Field well | Put |
+|---|---|
+| Latitude, Longitude | The rounded columns (set to **Don't summarize**) |
+| Size | `Points` (or a sum such as `Sales`) |
+
+- For a **heatmap**, turn Heatmap → Show on and Markers → Show off. Size becomes the weight of each cell.
+- For **bubbles**, Size scales each bubble by the number of points in its cell.
+
+What you give up: individual records. You can't click one point or see its own tooltip, only the cell's totals. A common pattern is a grid map for the overview and a second page, filtered to a small area, that shows the raw points.
+
 ## Things to know
 
 - **Not AppSource-certifiable.** Certified visuals may not call external services. Distribute this one as an organizational visual. The `WebAccess` privilege in `capabilities.json` lists the Google domains it needs.
 - **GeoJSON URLs** must be on a host listed in `WebAccess` (`raw.githubusercontent.com` is included as an example). Add your own host and re-package.
 - **Changing the API key** requires reloading the report page, because Google Maps can only be loaded once per page.
 - **Geocoding** costs money per request and is rate-limited. For more than a few hundred addresses, geocode once in your pipeline (Power Query, SQL) and store lat/long.
-- **Large data (up to 500,000 rows).** Power BI sends rows in chunks of 30,000. The visual asks for the next chunk until everything has arrived (**Format visual → Data loading**): it draws the first chunk straight away, shows a "Loading data… N rows so far" note, and redraws once at the end. Set **Max rows to load** (default 500,000) to stop earlier; if rows are left out, a note says so. Turn **Load all rows** off to keep only the first 30,000. With clustering on, only the visible area is clustered and the number of markers is capped by *Max markers*, so zooming and panning stay smooth. Power BI itself caps custom visuals at about 1 million rows, and loading very large tables takes time and memory in the report. For heatmaps or density views you will get faster results by aggregating to a grid in SQL or Power Query first.
+- **Large data (up to 500,000 rows).** Loaded in chunks of 30,000 rows. See [Working with large data](#working-with-large-data) for the settings, limits and how to aggregate first.
 - **Performance.** Selection ids and tooltips are built only when needed. Without clustering, the *Max markers* setting caps rendering (default 5,000).
 - **Deprecated Google features avoided:** `HeatmapLayer` and `KmlLayer` (removed), the Drawing library (deprecated). Classic `Marker` is used only when no Map ID is set.
 - **Licensing.** Your use must follow the Google Maps Platform Terms, including attribution, which the map shows automatically.
