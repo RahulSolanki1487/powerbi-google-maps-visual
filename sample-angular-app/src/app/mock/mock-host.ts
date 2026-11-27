@@ -95,7 +95,8 @@ const PALETTE = ['#01B8AA', '#374649', '#FD625E', '#F2C80F', '#5F6B6D', '#8AD4EB
 function now() { return new Date().toLocaleTimeString(); }
 
 /** Builds the fake host handed to `new Visual({ element, host })`. */
-export function createMockHost(log: HostLogger) {
+/** `fetchMore` mimics host.fetchMoreData(): it returns true when another chunk of rows will be delivered. */
+export function createMockHost(log: HostLogger, fetchMore: () => boolean = () => false) {
   const colors = new Map<string, string>();
   return {
     createSelectionManager: () => new MockSelectionManager(log),
@@ -119,6 +120,7 @@ export function createMockHost(log: HostLogger) {
       renderingFinished: () => log({ time: now(), kind: 'render', message: 'renderingFinished' }),
       renderingFailed: (_o: unknown, reason?: string) => log({ time: now(), kind: 'render', message: `renderingFailed: ${reason ?? ''}` })
     },
+    fetchMoreData: (_aggregate?: boolean) => fetchMore(),
     persistProperties: () => undefined,
     launchUrl: (url: string) => window.open(url, '_blank', 'noopener'),
     locale: 'en-US'

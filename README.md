@@ -16,7 +16,7 @@ A Power BI custom visual (`pbiviz`, API 5.x, TypeScript) that puts a Google Map 
 | **Heatmap** | Custom canvas heatmap, weighted by Size. Google removed its own HeatmapLayer in May 2026, so the visual draws its own. |
 | **Geocoding** | Rows that have **Location** but no lat/long are geocoded with Google, cached for the session and throttled. |
 | **Map options** | Roadmap / satellite / hybrid / terrain, Style JSON, Map ID (cloud styling and Advanced Markers), traffic / transit / bicycling layers, auto-zoom to data, controls on/off. |
-| **Power BI integration** | Cross-filtering and highlighting (click, Ctrl+click, click the map to clear), bookmark-aware selection, native tooltips plus report-page tooltips, right-click context menu (drill-through), legend, landing page, up to 30,000 rows. |
+| **Power BI integration** | Cross-filtering and highlighting (click, Ctrl+click, click the map to clear), bookmark-aware selection, native tooltips plus report-page tooltips, right-click context menu (drill-through), legend, landing page, up to 500,000 rows (loaded in chunks). |
 
 ## Data fields
 
@@ -207,7 +207,8 @@ The [`sample-angular-app`](sample-angular-app/) has a **How to setup** page with
 - **GeoJSON URLs** must be on a host listed in `WebAccess` (`raw.githubusercontent.com` is included as an example). Add your own host and re-package.
 - **Changing the API key** requires reloading the report page, because Google Maps can only be loaded once per page.
 - **Geocoding** costs money per request and is rate-limited. For more than a few hundred addresses, geocode once in your pipeline (Power Query, SQL) and store lat/long.
-- **Performance.** Tens of thousands of points work with clustering on. Without clustering, the *Max markers* setting caps rendering (default 5,000).
+- **Large data (up to 500,000 rows).** Power BI sends rows in chunks of 30,000. The visual asks for the next chunk until everything has arrived (**Format visual → Data loading**): it draws the first chunk straight away, shows a "Loading data… N rows so far" note, and redraws once at the end. Set **Max rows to load** (default 500,000) to stop earlier; if rows are left out, a note says so. Turn **Load all rows** off to keep only the first 30,000. With clustering on, only the visible area is clustered and the number of markers is capped by *Max markers*, so zooming and panning stay smooth. Power BI itself caps custom visuals at about 1 million rows, and loading very large tables takes time and memory in the report. For heatmaps or density views you will get faster results by aggregating to a grid in SQL or Power Query first.
+- **Performance.** Selection ids and tooltips are built only when needed. Without clustering, the *Max markers* setting caps rendering (default 5,000).
 - **Deprecated Google features avoided:** `HeatmapLayer` and `KmlLayer` (removed), the Drawing library (deprecated). Classic `Marker` is used only when no Map ID is set.
 - **Licensing.** Your use must follow the Google Maps Platform Terms, including attribution, which the map shows automatically.
 

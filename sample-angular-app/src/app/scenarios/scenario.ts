@@ -10,7 +10,8 @@ export interface Scenario {
   needsGeocoding?: boolean;
   /** Load the table from a CSV file under public/ instead of `table`. */
   csvUrl?: string;
-  table?: CsvTable;
+  /** The data, or a function that builds it on first use (for big data sets). */
+  table?: CsvTable | (() => CsvTable);
   roles: Record<string, Role>;
   /** Format-pane settings (capabilities.json "objects"). `{origin}` in strings is replaced by the page origin. */
   objects: Record<string, Record<string, unknown>>;

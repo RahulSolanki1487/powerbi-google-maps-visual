@@ -144,6 +144,13 @@ export const SCENARIOS: Scenario[] = [
     objects: { mapSettings: { mapType: 'hybrid', traffic: true, transit: true, bicycling: true, fullscreenControl: true }, markers: { cluster: false } }
   },
   {
+    id: 'bigdata', title: 'Large data (500k rows)',
+    description: '500,000 points delivered in 30,000-row chunks, like Power BI does. The map draws the first chunk, a status note counts the rows as chunks arrive, and the full set is drawn at the end. Zoom and pan: only the visible area is clustered.',
+    table: () => table(['Location', 'Latitude', 'Longitude', 'Sales'], scatter(500000)),
+    roles: { Location: 'location', Latitude: 'latitude', Longitude: 'longitude', Sales: 'size' },
+    objects: { markers: { shape: 'circle', cluster: true, clusterRadius: 60, maxMarkers: 3000 }, dataLoading: { loadAll: true, maxRows: 500000 } }
+  },
+  {
     id: 'everything', title: 'Everything (sample.csv)',
     description: 'The repo sample: stores, warehouses, two truck routes and two WKT zones in one table.',
     csvUrl: 'sample-data/sample.csv',
